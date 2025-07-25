@@ -35,11 +35,16 @@ def main():
     os.environ['DBT_PROFILES_DIR'] = dbt_project_dir
     os.environ['DBT_PROJECT_DIR'] = dbt_project_dir
     
+    # Create writable directories in temp space
+    os.makedirs("/tmp/dbt_target", exist_ok=True)
+    os.makedirs("/tmp/dbt_logs", exist_ok=True)
+    logger.info("Created writable temp directories for dbt target and logs")
+    
     # Get dbt command arguments from Spark args
     dbt_args = []
     skip_next = False
     
-    for i, arg in enumerate(sys.argv[1:], 1):
+    for arg in sys.argv[1:]:
         if skip_next:
             skip_next = False
             continue

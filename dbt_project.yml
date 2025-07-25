@@ -5,8 +5,9 @@ profile: 'simple_dbt_project'
 
 model-paths: ["models"]
 test-paths: ["tests"]
-target-path: "target"
-clean-targets: ["target", "logs"]
+target-path: "/tmp/dbt_target"
+log-path: "/tmp/dbt_logs"
+clean-targets: ["/tmp/dbt_target", "/tmp/dbt_logs"]
 
 models:
   simple_dbt_project:
