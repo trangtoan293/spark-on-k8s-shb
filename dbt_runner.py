@@ -106,14 +106,19 @@ def main():
             logger.info(f"dbt module found at: {dbt.__file__}")
         except ImportError as e:
             logger.error(f"Cannot import dbt: {e}")
+        from dbt.cli.main import dbtRunner
+        dbt = dbtRunner()
+        
+        # Run command
+        logger.info(f"🚀 Running dbt command: {' '.join(dbt_args)}")
         
         # Run dbt command
-        cmd = ['dbt'] + dbt_args
-        logger.info(f"🔧 Executing: {' '.join(cmd)}")
-        logger.info(f"Working directory: {os.getcwd()}")
-        logger.info(f"PATH: {os.environ.get('PATH', 'NOT_SET')}")
-        
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        # cmd = ['dbt'] + dbt_args
+        # logger.info(f"🔧 Executing: {' '.join(cmd)}")
+        # logger.info(f"Working directory: {os.getcwd()}")
+        # logger.info(f"PATH: {os.environ.get('PATH', 'NOT_SET')}")
+        result = dbt.invoke(dbt_args)
+        # result = subprocess.run(cmd, capture_output=True, text=True)
         
         if result.returncode == 0:
             logger.info("✅ dbt command completed successfully")
