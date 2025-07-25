@@ -84,46 +84,13 @@ def main():
                 logger.error(f"Required file not found: {file}")
                 sys.exit(1)
         
-        # List project contents for debugging
-        logger.info("dbt project contents:")
-        for item in Path('.').iterdir():
-            logger.info(f"  - {item.name}")
-        
-        # Check if dbt command is available
-        try:
-            version_result = subprocess.run(['dbt', '--version'], capture_output=True, text=True)
-            logger.info(f"dbt version check: returncode={version_result.returncode}")
-            logger.info(f"dbt version stdout: {version_result.stdout}")
-            logger.info(f"dbt version stderr: {version_result.stderr}")
-        except FileNotFoundError as e:
-            logger.error(f"dbt command not found: {e}")
-            sys.exit(1)
-        except Exception as e:
-            logger.error(f"Error checking dbt version: {e}")
-        
-        # Check Python path and installed packages
-        logger.info(f"Python executable: {sys.executable}")
-        logger.info(f"Python path: {sys.path}")
-        
-        # Try to import dbt
-        try:
-            import dbt
-            logger.info(f"dbt module found at: {dbt.__file__}")
-        except ImportError as e:
-            logger.error(f"Cannot import dbt: {e}")
         from dbt.cli.main import dbtRunner
         dbt = dbtRunner()
         
         # Run command
         logger.info(f"🚀 Running dbt command: {' '.join(dbt_args)}")
         
-        # Run dbt command
-        # cmd = ['dbt'] + dbt_args
-        # logger.info(f"🔧 Executing: {' '.join(cmd)}")
-        # logger.info(f"Working directory: {os.getcwd()}")
-        # logger.info(f"PATH: {os.environ.get('PATH', 'NOT_SET')}")
         result = dbt.invoke(dbt_args)
-        # result = subprocess.run(cmd, capture_output=True, text=True)
         
         if result.success:
             logger.info("✅ dbt command completed successfully")
@@ -133,7 +100,6 @@ def main():
             if result.exception:
                 logger.error(f"Exception: {result.exception}")
             return False
-            
             
     except Exception as e:
         logger.error(f"❌ Error running dbt: {str(e)}")
