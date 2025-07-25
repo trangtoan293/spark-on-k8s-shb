@@ -120,14 +120,15 @@ def main():
         result = dbt.invoke(dbt_args)
         # result = subprocess.run(cmd, capture_output=True, text=True)
         
-        if result.returncode == 0:
+        if result.success:
             logger.info("✅ dbt command completed successfully")
-            print(result.stdout)
+            return True
         else:
             logger.error("❌ dbt command failed")
-            print("STDOUT:", result.stdout)
-            print("STDERR:", result.stderr)
-            sys.exit(result.returncode)
+            if result.exception:
+                logger.error(f"Exception: {result.exception}")
+            return False
+            
             
     except Exception as e:
         logger.error(f"❌ Error running dbt: {str(e)}")
