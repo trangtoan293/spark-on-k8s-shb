@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: Staging table for orders
+    columns:
+      - name: order_id
+        description: Primary key
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: Foreign key to customers
+        tests:
+          - not_null
+      - name: status
+        description: Order status
+        tests:
+          - accepted_values:
+              values: ['COMPLETED', 'PENDING', 'CANCELLED']
+      - name: amount
+        description: Order amount
+        tests:
+          - not_null
+
+  - name: dim_orders
+    description: Orders dimension table
+    columns:
+      - name: order_id
+        description: Primary key
+        tests:
+          - not_null
+          - unique
+      - name: order_category
+        description: Order value category
+        tests:
+          - accepted_values:
+              values: ['High Value', 'Medium Value', 'Low Value']

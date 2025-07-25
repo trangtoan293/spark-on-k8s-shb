@@ -1,0 +1,22 @@
+simple_dbt_project:
+  target: dev
+  outputs:
+    dev:
+      type: spark
+      method: session
+      schema: "{{ env_var('SCHEMA_NAME') }}"
+      host: local[*]
+      port: 7077
+      connect_timeout: 60
+      connect_retries: 3
+      retry_all: true
+
+    prod:
+      type: spark
+      method: session
+      schema: analytics_prod
+      host: spark-master
+      port: 7077
+      connect_timeout: 60
+      connect_retries: 3
+      retry_all: true
