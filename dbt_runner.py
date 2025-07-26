@@ -120,13 +120,13 @@ def main():
             logger.error("Failed to install dbt dependencies")
             sys.exit(1)
         
-        from dbt.cli.main import dbtRunner
+        from dbt.cli.main import dbtRunner,dbtRunnerResult
         dbt = dbtRunner()
         
         # Run command
         logger.info(f"🚀 Running dbt command: {' '.join(dbt_args)}")
-        
-        result = dbt.invoke(dbt_args)
+
+        result: dbtRunnerResult = dbt.invoke(dbt_args)
         
         if result.success:
             logger.info("✅ dbt command completed successfully")
@@ -147,6 +147,7 @@ def main():
                 logger.info("Spark session stopped")
             except:
                 pass
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
