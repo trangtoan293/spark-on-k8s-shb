@@ -126,15 +126,17 @@ def main():
         # Run command
         logger.info(f"🚀 Running dbt command: {' '.join(dbt_args)}")
 
-        result: dbtRunnerResult = dbt.invoke(dbt_args)
-        
-        if result.success:
+        res: dbtRunnerResult = dbt.invoke(dbt_args)
+        # inspect the results
+        for r in res.result:
+            logger.info(f"{r.node.name}: {r.status}")
+        if res.success:
             logger.info("✅ dbt command completed successfully")
             return True
         else:
             logger.error("❌ dbt command failed")
-            if result.exception:
-                logger.error(f"Exception: {result.exception}")
+            if res.exception:
+                logger.error(f"Exception: {res.exception}")
             return False
             
     except Exception as e:
