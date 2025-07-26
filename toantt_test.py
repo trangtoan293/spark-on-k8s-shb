@@ -1,4 +1,7 @@
 from pyspark.sql import SparkSession
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 try:
     spark = SparkSession.getActiveSession()
