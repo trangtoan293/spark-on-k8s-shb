@@ -18,8 +18,23 @@ models:
       +materialized: table
       +file_format: iceberg
   elementary:
-    +schema: "elementary"
+    +materialized: incremental
+    +schema: elementary
+    +incremental_strategy: "merge"
+    +on_schema_change: "append_new_columns"
     +file_format: iceberg
+
+vars:
+  # Elementary configuration
+  elementary:
+    incremental_strategy: "merge"
+    # Set timezone for monitoring
+    timezone: 'Asia/Ho_Chi_Minh'
+    temp_table_prefix: "edr_"
+    days_back: 7
+    
+on-run-end:
+  - "{{ elementary.upload_artifacts() }}"
 
 flags:
   require_explicit_package_overrides_for_builtin_materializations: False
