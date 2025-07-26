@@ -15,6 +15,37 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+def install_dbt_dependencies():
+    """Install dbt project dependencies if packages.yml exists"""
+    
+    packages_file = Path("packages.yml")
+    if not packages_file.exists():
+        logger.info("📦 No packages.yml found, skipping dependency installation")
+        return True
+    
+    logger.info("📦 Found packages.yml, installing dbt dependencies...")
+    
+    try:
+        from dbt.cli.main import dbtRunner
+        dbt = dbtRunner()
+        
+        # Run dbt deps command
+        logger.info("🔄 Running dbt deps command")
+        result = dbt.invoke(['deps'])
+        
+        if result.success:
+            logger.info("✅ dbt dependencies installed successfully")
+            return True
+        else:
+            logger.error("❌ dbt deps command failed")
+            if result.exception:
+                logger.error(f"Exception: {result.exception}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Error installing dbt dependencies: {str(e)}")
+        return False
+
 def main():
     """Main entry point for external dbt runner"""
     
@@ -83,6 +114,11 @@ def main():
             if not Path(file).exists():
                 logger.error(f"Required file not found: {file}")
                 sys.exit(1)
+        
+        # Install dbt dependencies first
+        if not install_dbt_dependencies():
+            logger.error("Failed to install dbt dependencies")
+            sys.exit(1)
         
         from dbt.cli.main import dbtRunner
         dbt = dbtRunner()

@@ -1,0 +1,28 @@
+# dbt artifacts
+target/
+logs/
+/tmp/dbt_target/
+/tmp/dbt_logs/
+
+# dbt packages (installed via dbt deps)
+dbt_packages/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
