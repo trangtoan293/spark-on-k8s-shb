@@ -8,7 +8,6 @@ import sys
 import logging
 import subprocess
 import json
-import re
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 import tempfile
@@ -99,122 +98,18 @@ class ElementaryDbtRunner:
             logger.error(f"❌ Error installing dbt dependencies: {str(e)}")
             return False
 
-    def sanitize_spark_identifiers(self) -> bool:
-        """Set up Spark-compatible identifier handling for dbt models"""
-        try:
-            logger.info("🔧 Setting up Spark SQL identifier compatibility...")
-            
-            # Create temporary dbt_project.yml override for Spark compatibility
-            dbt_project_override = {
-                'models': {
-                    '+materialized': 'table',
-                    '+pre-hook': [
-                        'SET spark.sql.parser.quotedRegexColumnNames = true',
-                        'SET spark.sql.caseSensitive = false'
-                    ],
-                    '+post-hook': [],
-                    'elementary': {
-                        '+materialized': 'table',
-                        '+schema': 'elementary',
-                        '+alias': "{{ this.identifier | replace('-', '_') | replace('.', '_') | replace(' ', '_') | lower }}"
-                    }
-                },
-                'vars': {
-                    'elementary': {
-                        'normalize_schema_and_table_names': True,
-                        'quote_columns': False,
-                        'quote_identifiers': False
-                    }
-                }
-            }
-            
-            # Set environment variables for Spark compatibility
-            os.environ['DBT_SPARK_QUOTE_COLUMNS'] = 'false'
-            os.environ['DBT_SPARK_NORMALIZE_NAMES'] = 'true'
-            
-            logger.info("✅ Spark SQL identifier compatibility configured")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Error setting up Spark identifier compatibility: {str(e)}")
-            return False
-
-    def validate_spark_identifiers(self) -> bool:
-        """Validate model and table names for Spark SQL compatibility"""
-        try:
-            logger.info("🔍 Validating Spark SQL identifier compatibility...")
-            
-            # Spark SQL reserved keywords (common ones)
-            SPARK_RESERVED_KEYWORDS = {
-                'select', 'from', 'where', 'group', 'order', 'having', 'limit', 
-                'union', 'case', 'when', 'then', 'else', 'end', 'if', 'and', 'or', 
-                'not', 'in', 'like', 'between', 'is', 'null', 'true', 'false',
-                'create', 'table', 'view', 'insert', 'update', 'delete', 'drop',
-                'alter', 'add', 'column', 'index', 'database', 'schema', 'partition',
-                'format', 'location', 'comment', 'tblproperties', 'serde'
-            }
-            
-            # Pattern for valid Spark identifiers
-            VALID_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
-            
-            issues_found = []
-            
-            # Check models directory for problematic names
-            models_dir = Path(self.project_dir) / "models"
-            if models_dir.exists():
-                for model_file in models_dir.rglob("*.sql"):
-                    model_name = model_file.stem
-                    
-                    # Check for reserved keywords
-                    if model_name.lower() in SPARK_RESERVED_KEYWORDS:
-                        issues_found.append(f"⚠️  Model '{model_name}' uses Spark reserved keyword")
-                    
-                    # Check for invalid characters
-                    if not VALID_IDENTIFIER_PATTERN.match(model_name):
-                        issues_found.append(f"⚠️  Model '{model_name}' contains invalid characters (use a-z, A-Z, 0-9, _ only)")
-                    
-                    # Check for hyphen (common issue)
-                    if '-' in model_name:
-                        issues_found.append(f"⚠️  Model '{model_name}' contains hyphens (use underscores instead)")
-            
-            # Report findings
-            if issues_found:
-                logger.warning("🚨 Found potential Spark SQL identifier issues:")
-                for issue in issues_found:
-                    logger.warning(f"   {issue}")
-                logger.warning("💡 These will be automatically sanitized during execution")
-            else:
-                logger.info("✅ All identifiers appear Spark SQL compatible")
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Error validating Spark identifiers: {str(e)}")
-            return False
-
     def run_dbt_command(self, dbt_args: List[str]) -> bool:
-        """Run dbt command using dbtRunner API with Spark SQL compatibility"""
+        """Run dbt command using dbtRunner API"""
         try:
             from dbt.cli.main import dbtRunner
             
             logger.info(f"🚀 Running dbt command: {' '.join(dbt_args)}")
             
-            # Set up Spark identifier compatibility
-            if not self.sanitize_spark_identifiers():
-                logger.warning("⚠️  Failed to set up Spark identifier compatibility")
-            
             # Initialize dbt runner
             dbt = dbtRunner()
             
-            # Add Spark-specific arguments for identifier handling
-            enhanced_args = dbt_args.copy()
-            if '--vars' not in enhanced_args:
-                enhanced_args.extend(['--vars', '{"normalize_schema_and_table_names": true, "quote_columns": false}'])
-            
-            logger.info(f"🔧 Enhanced command with Spark compatibility: {' '.join(enhanced_args)}")
-            
             # Run the dbt command
-            result = dbt.invoke(enhanced_args)
+            result = dbt.invoke(dbt_args)
             
             if result.success:
                 logger.info("✅ dbt command completed successfully")
@@ -378,30 +273,26 @@ def main():
     success = True
     
     try:
-        # Step 1: Validate Spark SQL compatibility
-        if not runner.validate_spark_identifiers():
-            logger.warning("⚠️  Spark identifier validation failed (non-critical)")
-        
-        # Step 2: Install dependencies (including Elementary)
+        # Step 1: Install dependencies (including Elementary)
         if not runner.install_dbt_dependencies():
             logger.error("❌ Failed to install dbt dependencies")
             success = False
         
-        # Step 3: Run main dbt command with Spark compatibility
+        # Step 2: Run main dbt command
         if success and not runner.run_dbt_command(dbt_args):
             logger.error("❌ Failed to run dbt command")
             success = False
         
-        # Step 4: Generate Elementary report (if dbt succeeded)
+        # Step 3: Generate Elementary report (if dbt succeeded)
         if success:
             if not runner.run_elementary_report():
                 logger.warning("⚠️  Failed to generate Elementary report (non-critical)")
         
-        # Step 5: Send alerts (non-critical)
+        # Step 4: Send alerts (non-critical)
         if success:
             runner.send_elementary_alerts()
         
-        # Step 6: Upload artifacts to storage
+        # Step 5: Upload artifacts to storage
         if not runner.upload_artifacts_to_storage():
             logger.warning("⚠️  Failed to upload artifacts to storage (non-critical)")
         
