@@ -1,5 +1,5 @@
 {{ config(materialized='view') }}
-
+    
 SELECT 
     CAST(order_id AS INTEGER) AS order_id,
     CAST(customer_id AS INTEGER) AS customer_id,

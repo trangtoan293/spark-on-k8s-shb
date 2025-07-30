@@ -17,36 +17,22 @@ models:
     marts:
       +materialized: table
       +file_format: iceberg
-  elementary:
-    +materialized: incremental
-    +schema: elementary
-    +incremental_strategy: "merge"
-    +on_schema_change: "append_new_columns"
+      
+  # dbt-artifacts package models
+  dbt_artifacts:
+    +materialized: table
+    +schema: monitoring
     +file_format: iceberg
-    +alias: "{{ this.identifier | replace('-', '_') | replace('.', '_') | lower }}"
-    +pre-hook: |
-        {% set spark_safe_name = this.identifier | replace('-', '_') | replace('.', '_') | lower %}
-        {% if spark_safe_name != this.identifier %}
-          {{ log("Sanitizing table name: " ~ this.identifier ~ " -> " ~ spark_safe_name, info=True) }}
-        {% endif %}
-
 
 vars:
-  # Elementary configuration
-  elementary:
-    incremental_strategy: "merge"
-    # Set timezone for monitoring
-    timezone: 'Asia/Ho_Chi_Minh'
-    temp_table_prefix: "edr_"
-    days_back: 7
-    # Disable problematic Elementary features for Spark
-    disable_dbt_artifacts_autoupload: false
-    disable_run_results: false
-    # Force lowercase and underscore naming
-    normalize_schema_and_table_names: true
+  # dbt-artifacts configuration
+  dbt_artifacts_database: "{{ target.database }}"
+  dbt_artifacts_schema: "dbt_artifacts"
+  dbt_artifacts_exclude_all_results: true  # Performance optimization for Spark
 
+# Hook to upload artifacts after each run
 on-run-end:
-  - "{{ elementary.upload_artifacts() }}"
+  - "{{ dbt_artifacts.upload_results(results) }}"
 
 flags:
   require_explicit_package_overrides_for_builtin_materializations: False

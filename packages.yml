@@ -6,9 +6,11 @@ packages:
   # dbt-spark-utils: Spark-specific utility macros
   - package: dbt-labs/spark_utils
     version: 0.3.0
-  # Elementary Data package
-  - package: elementary-data/elementary
-    version: 0.18.1
+    
+  # dbt-artifacts: Brooklyn Data monitoring package
+  - package: brooklyn-data/dbt_artifacts
+    version: 2.9.3
+    
   # Optional: Add more packages as needed
   # - package: calogica/dbt_expectations
   #   version: 0.10.3
