@@ -23,12 +23,21 @@ models:
     +materialized: table
     +schema: monitoring
     +file_format: iceberg
+    # Force full refresh to avoid schema conflicts
+    +full_refresh: true
+    # Handle timestamp conversion properly
+    +pre-hook: |
+      {% if this.is_table %}
+        DROP TABLE IF EXISTS {{ this }}
+      {% endif %}
 
 vars:
   # dbt-artifacts configuration
   dbt_artifacts_database: "{{ target.database }}"
   dbt_artifacts_schema: "dbt_artifacts"
   dbt_artifacts_exclude_all_results: true  # Performance optimization for Spark
+  # Force string timestamps for Spark compatibility
+  dbt_artifacts_timestamp_format: "string"
 
 # Hook to upload artifacts after each run
 on-run-end:
