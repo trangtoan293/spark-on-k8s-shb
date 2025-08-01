@@ -142,14 +142,22 @@ class OracleToIcebergSCNStreaming:
             logger.info(f"Validating Oracle table: {table_name}")
             jdbc_url = self.build_oracle_jdbc_url()
             
-            # Check table existence and get column info including ORA_ROWSCN
-            check_query = f"""(
-                SELECT 
-                    COUNT(*) as table_exists,
-                    (SELECT COUNT(*) FROM {table_name} WHERE ROWNUM = 1) as has_data
-                FROM USER_TABLES 
-                WHERE TABLE_NAME = UPPER('{table_name}')
-            ) oracle_table_check"""
+            # Parse schema.table format if present
+            if '.' in table_name:
+                schema, table = table_name.split('.', 1)
+                # Check in ALL_TABLES for schema.table format
+                check_query = f"""(
+                    SELECT COUNT(*) as table_exists
+                    FROM ALL_TABLES 
+                    WHERE OWNER = UPPER('{schema}') AND TABLE_NAME = UPPER('{table}')
+                ) oracle_table_check"""
+            else:
+                # Check in USER_TABLES for table only
+                check_query = f"""(
+                    SELECT COUNT(*) as table_exists
+                    FROM USER_TABLES 
+                    WHERE TABLE_NAME = UPPER('{table_name}')
+                ) oracle_table_check"""
             
             jdbc_options = {
                 "url": jdbc_url,
@@ -165,16 +173,25 @@ class OracleToIcebergSCNStreaming:
             
             validation_result = {
                 "exists": result["table_exists"] > 0,
-                "has_data": result["has_data"] > 0 if result["table_exists"] > 0 else False,
+                "has_data": False,
                 "scn_supported": False
             }
             
             if validation_result["exists"]:
-                # Test ORA_ROWSCN access
-                scn_query = f"(SELECT a.ORA_ROWSCN FROM {table_name} a WHERE ROWNUM = 1) scn_test"
-                jdbc_options["dbtable"] = scn_query
-                
+                # Check if table has data
                 try:
+                    data_query = f"(SELECT COUNT(*) as row_count FROM {table_name} WHERE ROWNUM = 1) data_check"
+                    jdbc_options["dbtable"] = data_query
+                    data_df = self.spark.read.format("jdbc").options(**jdbc_options).load()
+                    data_result = data_df.collect()[0]
+                    validation_result["has_data"] = data_result["row_count"] > 0
+                except:
+                    logger.info(f"Could not check data for table '{table_name}' - may be empty or inaccessible")
+                
+                # Test ORA_ROWSCN access
+                try:
+                    scn_query = f"(SELECT a.ORA_ROWSCN FROM {table_name} a WHERE ROWNUM = 1) scn_test"
+                    jdbc_options["dbtable"] = scn_query
                     scn_df = self.spark.read.format("jdbc").options(**jdbc_options).load()
                     scn_result = scn_df.collect()
                     validation_result["scn_supported"] = True
