@@ -30,6 +30,7 @@ import logging
 from typing import Optional
 from pyspark.sql import SparkSession
 from pyspark.sql import DataFrame
+from urllib.parse import quote_plus
 import time
 
 # Configure logging
@@ -79,11 +80,18 @@ class OracleToIcebergStreaming:
             logger.warning(f"Spark session setup issue: {e}")
             self.spark = None
         return self.spark
-    
+        
     def build_oracle_jdbc_url(self) -> str:
-        """Build Oracle JDBC URL from configuration"""
-        return f"jdbc:oracle:thin:@{self.oracle_config['host']}:{self.oracle_config['port']}:{self.oracle_config['service']}"
-    
+        """Build Oracle JDBC URL from configuration with special character handling"""
+        # URL encode username and password to handle special characters like @, #, etc.
+        encoded_username = quote_plus(self.oracle_config['username'])
+        encoded_password = quote_plus(self.oracle_config['password'])
+        
+        # Build JDBC URL with encoded credentials (using SERVICE_NAME format)
+        jdbc_url = f"jdbc:oracle:thin:{encoded_username}/{encoded_password}@//{self.oracle_config['host']}:{self.oracle_config['port']}/{self.oracle_config['service']}"
+        
+        return jdbc_url
+  
     def read_oracle_batch(self, table_name: str) -> DataFrame:
         """Read Oracle table in batch mode (called by streaming micro-batches)"""
         jdbc_url = self.build_oracle_jdbc_url()
