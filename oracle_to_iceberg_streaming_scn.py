@@ -69,7 +69,7 @@ class OracleToIcebergSCNStreaming:
         if missing_fields:
             raise ValueError(f"Missing required environment variables: {missing_fields}")
         
-        logger.info(f"Oracle config loaded: {config['host']}:{config['port']}/{config['service']}")
+        logger.info(f"Oracle config loaded: {config['host']}:{config['port']}/{config['service']} user: {config['username']}")
         return config
     
     def create_spark_session(self) -> SparkSession:
@@ -101,7 +101,9 @@ class OracleToIcebergSCNStreaming:
         encoded_password = quote_plus(self.oracle_config['password'])
         
         jdbc_url = f"jdbc:oracle:thin:{encoded_username}/{encoded_password}@//{self.oracle_config['host']}:{self.oracle_config['port']}/{self.oracle_config['service']}"
-        logger.debug("JDBC URL built successfully")
+        # Log URL without credentials for debugging
+        safe_url = f"jdbc:oracle:thin:***:***@//{self.oracle_config['host']}:{self.oracle_config['port']}/{self.oracle_config['service']}"
+        logger.info(f"JDBC URL built: {safe_url}")
         return jdbc_url
     
     def get_last_scn_checkpoint(self, checkpoint_location: str, table_name: str) -> Optional[int]:
@@ -179,6 +181,8 @@ class OracleToIcebergSCNStreaming:
         jdbc_options = {
             "url": jdbc_url,
             "dbtable": incremental_query,
+            "user": self.oracle_config['username'],  # Add separate user option
+            "password": self.oracle_config['password'],  # Add separate password option
             "driver": "oracle.jdbc.driver.OracleDriver",
             "fetchsize": "5000",  # Larger batch for performance
             "queryTimeout": "600",
