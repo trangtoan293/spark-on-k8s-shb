@@ -105,181 +105,22 @@ class OracleToIcebergSCNStreaming:
         logger.info(f"JDBC URL built: {safe_url}")
         return jdbc_url
     
-    def validate_oracle_connection(self) -> bool:
-        """Validate Oracle database connection"""
+    
+    def ensure_iceberg_database_exists(self, database_name: str) -> bool:
+        """Ensure Iceberg database exists, create if not"""
         try:
-            logger.info("Validating Oracle database connection...")
-            jdbc_url = self.build_oracle_jdbc_url()
+            logger.info(f"Ensuring database exists: {database_name}")
             
-            # Simple connection test query
-            test_query = "(SELECT 1 FROM DUAL) oracle_test"
-            jdbc_options = {
-                "url": jdbc_url,
-                "dbtable": test_query,
-                "user": self.oracle_config['username'],
-                "password": self.oracle_config['password'],
-                "driver": "oracle.jdbc.driver.OracleDriver",
-                "fetchsize": "1"
-            }
+            # Try to create database (will do nothing if exists)
+            self.spark.sql(f"CREATE DATABASE IF NOT EXISTS {database_name}")
+            logger.info(f"✓ Database '{database_name}' ready")
+            return True
             
-            test_df = self.spark.read.format("jdbc").options(**jdbc_options).load()
-            result = test_df.collect()
-            
-            if result and len(result) > 0:
-                logger.info("✓ Oracle database connection validated successfully")
-                return True
-            else:
-                logger.error("✗ Oracle connection test failed - no result returned")
-                return False
-                
         except Exception as e:
-            logger.error(f"✗ Oracle database connection validation failed: {e}")
+            logger.error(f"✗ Failed to create database '{database_name}': {str(e)[:100]}...")
             return False
     
-    def validate_oracle_table(self, table_name: str) -> dict:
-        """Validate Oracle table existence and check ORA_ROWSCN support"""
-        try:
-            logger.info(f"Validating Oracle table: {table_name}")
-            jdbc_url = self.build_oracle_jdbc_url()
-            
-            # Parse schema.table format if present
-            if '.' in table_name:
-                schema, table = table_name.split('.', 1)
-                # Check in ALL_TABLES for schema.table format
-                check_query = f"""(
-                    SELECT COUNT(*) as table_exists
-                    FROM ALL_TABLES 
-                    WHERE OWNER = UPPER('{schema}') AND TABLE_NAME = UPPER('{table}')
-                ) oracle_table_check"""
-            else:
-                # Check in USER_TABLES for table only
-                check_query = f"""(
-                    SELECT COUNT(*) as table_exists
-                    FROM USER_TABLES 
-                    WHERE TABLE_NAME = UPPER('{table_name}')
-                ) oracle_table_check"""
-            
-            jdbc_options = {
-                "url": jdbc_url,
-                "dbtable": check_query,
-                "user": self.oracle_config['username'],
-                "password": self.oracle_config['password'],
-                "driver": "oracle.jdbc.driver.OracleDriver",
-                "fetchsize": "1"
-            }
-            
-            result_df = self.spark.read.format("jdbc").options(**jdbc_options).load()
-            result = result_df.collect()[0]
-            
-            validation_result = {
-                "exists": result["table_exists"] > 0,
-                "has_data": False,
-                "scn_supported": False
-            }
-            
-            if validation_result["exists"]:
-                # Check if table has data
-                try:
-                    data_query = f"(SELECT COUNT(*) as row_count FROM {table_name} WHERE ROWNUM = 1) data_check"
-                    jdbc_options["dbtable"] = data_query
-                    data_df = self.spark.read.format("jdbc").options(**jdbc_options).load()
-                    data_result = data_df.collect()[0]
-                    validation_result["has_data"] = data_result["row_count"] > 0
-                except:
-                    logger.info(f"Could not check data for table '{table_name}' - may be empty or inaccessible")
-                
-                # Test ORA_ROWSCN access
-                try:
-                    scn_query = f"(SELECT a.ORA_ROWSCN FROM {table_name} a WHERE ROWNUM = 1) scn_test"
-                    jdbc_options["dbtable"] = scn_query
-                    scn_df = self.spark.read.format("jdbc").options(**jdbc_options).load()
-                    scn_result = scn_df.collect()
-                    validation_result["scn_supported"] = True
-                    logger.info(f"✓ Oracle table '{table_name}' validated - exists: {validation_result['exists']}, has_data: {validation_result['has_data']}, scn_supported: {validation_result['scn_supported']}")
-                except:
-                    logger.warning(f"⚠ Table '{table_name}' exists but ORA_ROWSCN not accessible")
-            else:
-                logger.error(f"✗ Oracle table '{table_name}' does not exist")
-            
-            return validation_result
-            
-        except Exception as e:
-            logger.error(f"✗ Oracle table validation failed for '{table_name}': {e}")
-            return {"exists": False, "has_data": False, "scn_supported": False}
-    
-    def validate_iceberg_setup(self, iceberg_table: str) -> dict:
-        """Validate Iceberg catalog and database setup"""
-        try:
-            logger.info(f"Validating Iceberg setup for table: {iceberg_table}")
-            
-            # Parse catalog.database.table
-            table_parts = iceberg_table.split('.')
-            if len(table_parts) != 2:
-                logger.error(f"✗ Invalid Iceberg table format: {iceberg_table} (expected: catalog.table)")
-                return {"catalog_exists": False, "database_exists": False, "writable": False}
-            
-            database, table = table_parts
-            
-            validation_result = {
-                "catalog_exists": False,
-                "database_exists": False,
-                "writable": False
-            }
-            
-            try:
-                # Check if catalog exists by listing databases
-                catalogs_df = self.spark.sql("SHOW CATALOGS")
-                catalogs = [row["catalog"] for row in catalogs_df.collect()]
-                
-                # Check current catalog
-                current_catalog = self.spark.sql("SELECT current_catalog()").collect()[0][0]
-                validation_result["catalog_exists"] = current_catalog is not None
-                
-                logger.info(f"Current catalog: {current_catalog}, Available catalogs: {catalogs}")
-                
-            except Exception as e:
-                logger.warning(f"Could not verify catalog: {e}")
-            
-            try:
-                # Check if database exists
-                databases_df = self.spark.sql(f"SHOW DATABASES")
-                databases = [row["databaseName"] for row in databases_df.collect()]
-                validation_result["database_exists"] = database in databases or database == "default"
-                
-                logger.info(f"Available databases: {databases}")
-                
-            except Exception as e:
-                logger.warning(f"Could not list databases: {e}")
-                # Try to create database if it doesn't exist
-                try:
-                    self.spark.sql(f"CREATE DATABASE IF NOT EXISTS {database}")
-                    validation_result["database_exists"] = True
-                    logger.info(f"✓ Created database: {database}")
-                except Exception as create_error:
-                    logger.error(f"✗ Failed to create database {database}: {create_error}")
-            
-            # Test write capability with a temporary table
-            try:
-                test_data = [(1, "test")]
-                test_df = self.spark.createDataFrame(test_data, ["id", "value"])
-                temp_table = f"{database}.test_write_capability"
-                
-                test_df.write.format("iceberg").mode("overwrite").saveAsTable(temp_table)
-                self.spark.sql(f"DROP TABLE IF EXISTS {temp_table}")
-                
-                validation_result["writable"] = True
-                logger.info("✓ Iceberg write capability validated")
-                
-            except Exception as e:
-                logger.error(f"✗ Iceberg write test failed: {e}")
-            
-            logger.info(f"Iceberg validation result: {validation_result}")
-            return validation_result
-            
-        except Exception as e:
-            logger.error(f"✗ Iceberg setup validation failed: {e}")
-            return {"catalog_exists": False, "database_exists": False, "writable": False}
-    
+   
     def get_last_scn_checkpoint(self, checkpoint_location: str, table_name: str) -> Optional[int]:
         """Retrieve last processed SCN from checkpoint"""
         try:
@@ -388,6 +229,11 @@ class OracleToIcebergSCNStreaming:
     def ensure_iceberg_table_exists(self, iceberg_table: str, source_df: DataFrame):
         """Ensure Iceberg table exists with proper schema for CDC"""
         try:
+            # Ensure database exists first
+            if '.' in iceberg_table:
+                database_name = iceberg_table.split('.')[0]
+                self.ensure_iceberg_database_exists(database_name)
+            
             # Check if table exists
             self.spark.sql(f"DESCRIBE TABLE {iceberg_table}")
             logger.info(f"Iceberg table '{iceberg_table}' exists")
@@ -412,6 +258,10 @@ class OracleToIcebergSCNStreaming:
         logger.info(f"Performing SCN-based MERGE on '{iceberg_table}' with key '{primary_key}'")
         
         try:
+            # Ensure database exists first
+            if '.' in iceberg_table:
+                database_name = iceberg_table.split('.')[0]
+                self.ensure_iceberg_database_exists(database_name)
             # Create temporary view for MERGE
             temp_view = f"temp_{iceberg_table.replace('.', '_')}_scn_updates"
             source_df.createOrReplaceTempView(temp_view)
@@ -437,6 +287,10 @@ class OracleToIcebergSCNStreaming:
                 
             except Exception as merge_error:
                 logger.warning(f"MERGE operation failed, falling back to append: {merge_error}")
+                # Ensure database exists before fallback append
+                if '.' in iceberg_table:
+                    database_name = iceberg_table.split('.')[0]
+                    self.ensure_iceberg_database_exists(database_name)
                 # Fallback: append with deduplication
                 source_df.write \
                     .format("iceberg") \
@@ -446,42 +300,6 @@ class OracleToIcebergSCNStreaming:
         except Exception as e:
             logger.error(f"SCN-based MERGE operation failed: {e}")
             raise
-    
-    def validate_prerequisites(self, oracle_table: str, iceberg_table: str) -> bool:
-        """Comprehensive validation before processing"""
-        logger.info("=== Starting prerequisite validation ===")
-        
-        validation_passed = True
-        
-        # 1. Validate Oracle connection
-        if not self.validate_oracle_connection():
-            validation_passed = False
-        
-        # 2. Validate Oracle table
-        oracle_validation = self.validate_oracle_table(oracle_table)
-        if not oracle_validation["exists"]:
-            logger.error(f"Oracle table '{oracle_table}' does not exist")
-            validation_passed = False
-        elif not oracle_validation["scn_supported"]:
-            logger.error(f"Oracle table '{oracle_table}' does not support ORA_ROWSCN")
-            validation_passed = False
-        
-        # 3. Validate Iceberg setup
-        iceberg_validation = self.validate_iceberg_setup(iceberg_table)
-        if not iceberg_validation["catalog_exists"]:
-            logger.error("Iceberg catalog not accessible")
-            validation_passed = False
-        elif not iceberg_validation["writable"]:
-            logger.error("Iceberg catalog not writable")
-            validation_passed = False
-        
-        if validation_passed:
-            logger.info("✓ All prerequisite validations passed")
-        else:
-            logger.error("✗ Prerequisite validation failed")
-        
-        logger.info("=== Prerequisite validation completed ===")
-        return validation_passed
     
     def process_scn_batch(
         self, 
@@ -493,12 +311,6 @@ class OracleToIcebergSCNStreaming:
         """Process incremental batch using SCN checkpointing"""
         
         try:
-            # Step 0: Validate prerequisites (only on first run)
-            if not hasattr(self, '_validated'):
-                if not self.validate_prerequisites(oracle_table, iceberg_table):
-                    raise RuntimeError("Prerequisite validation failed")
-                self._validated = True
-            
             # Step 1: Get last SCN checkpoint
             last_scn = self.get_last_scn_checkpoint(checkpoint_location, oracle_table)
             
@@ -605,8 +417,12 @@ def main():
     )
     parser.add_argument("--oracle-table", required=True, 
                        help="Oracle source table name")
-    parser.add_argument("--iceberg-table", required=True, 
+    parser.add_argument("--iceberg-table", 
                        help="Iceberg target table name (e.g., demo.customers)")
+    parser.add_argument("--iceberg-database", 
+                       help="Iceberg database name (e.g., integration)")
+    parser.add_argument("--iceberg-table-name", 
+                       help="Iceberg table name (e.g., customers)")
     parser.add_argument("--primary-key", default="ID", 
                        help="Primary key column for MERGE operations")
     parser.add_argument("--trigger-interval", default="2 minutes",
@@ -616,10 +432,16 @@ def main():
                        help="Checkpoint location for SCN state management")
     parser.add_argument("--one-time", action="store_true",
                        help="Run one-time SCN batch instead of continuous streaming")
-    parser.add_argument("--validate-only", action="store_true",
-                       help="Run validation checks only without processing data")
     
     args = parser.parse_args()
+    
+    # Determine iceberg table format
+    if args.iceberg_database and args.iceberg_table_name:
+        iceberg_table = f"{args.iceberg_database}.{args.iceberg_table_name}"
+    elif args.iceberg_table:
+        iceberg_table = args.iceberg_table
+    else:
+        parser.error("Must specify either --iceberg-table OR both --iceberg-database and --iceberg-table-name")
     
     loader = None
     try:
@@ -629,25 +451,12 @@ def main():
         # Create Spark session
         loader.spark = loader.create_spark_session()
         
-        if args.validate_only:
-            # Validation only mode
-            logger.info("Running validation checks only...")
-            validation_passed = loader.validate_prerequisites(
-                oracle_table=args.oracle_table,
-                iceberg_table=args.iceberg_table
-            )
-            if validation_passed:
-                logger.info("✓ All validations passed - system ready for processing")
-                sys.exit(0)
-            else:
-                logger.error("✗ Validation failed - please fix issues before processing")
-                sys.exit(1)
-        elif args.one_time:
+        if args.one_time:
             # One-time SCN-based batch processing
             logger.info("Running one-time SCN-based CDC batch")
             loader.process_scn_batch(
                 oracle_table=args.oracle_table,
-                iceberg_table=args.iceberg_table,
+                iceberg_table=iceberg_table,
                 checkpoint_location=args.checkpoint_location,
                 primary_key=args.primary_key
             )
@@ -656,12 +465,11 @@ def main():
             # Continuous SCN-based streaming
             loader.start_scn_streaming(
                 oracle_table=args.oracle_table,
-                iceberg_table=args.iceberg_table,
+                iceberg_table=iceberg_table,
                 primary_key=args.primary_key,
                 trigger_interval=args.trigger_interval,
                 checkpoint_location=args.checkpoint_location
             )
-        
         sys.exit(0)
         
     except KeyboardInterrupt:
