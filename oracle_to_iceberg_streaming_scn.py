@@ -171,7 +171,7 @@ class OracleToIcebergSCNStreaming:
             
             if validation_result["exists"]:
                 # Test ORA_ROWSCN access
-                scn_query = f"(SELECT ORA_ROWSCN FROM {table_name} WHERE ROWNUM = 1) scn_test"
+                scn_query = f"(SELECT a.ORA_ROWSCN FROM {table_name} a WHERE ROWNUM = 1) scn_test"
                 jdbc_options["dbtable"] = scn_query
                 
                 try:
