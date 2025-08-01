@@ -117,10 +117,20 @@ class OracleToIcebergStreaming:
     def write_to_iceberg_batch(self, df: DataFrame, iceberg_table: str):
         """Write DataFrame to Iceberg table (called by streaming micro-batches)"""
         try:
+            # Create table if not exists
+            try:
+                logger.info(f"Checking if table '{iceberg_table}' exists...")
+                self.spark.sql(f"DESCRIBE TABLE {iceberg_table}")
+                logger.info(f"Table '{iceberg_table}' exists, appending data")
+                write_mode = "append"
+            except Exception:
+                logger.info(f"Table '{iceberg_table}' does not exist, creating it")
+                write_mode = "overwrite"
+            
             # Simple append to Iceberg table - no transformations
             df.write \
                 .format("iceberg") \
-                .mode("append") \
+                .mode(write_mode) \
                 .saveAsTable(iceberg_table)
                 
             record_count = df.count()
