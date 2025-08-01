@@ -158,22 +158,22 @@ class OracleToIcebergSCNStreaming:
         
         jdbc_url = self.build_oracle_jdbc_url()
         
-        # Build SCN-based incremental query
+        # Build SCN-based incremental query with proper Oracle syntax
         if last_scn:
             # Incremental read: only records with SCN > last checkpoint
             incremental_query = f"""
-            (SELECT *, ORA_ROWSCN as CDC_SCN 
-             FROM {table_name} 
-             WHERE ORA_ROWSCN > {last_scn}
-             ORDER BY ORA_ROWSCN) oracle_incremental
+            (SELECT a.*, a.ORA_ROWSCN as CDC_SCN 
+             FROM {table_name} a 
+             WHERE a.ORA_ROWSCN > {last_scn}
+             ORDER BY a.ORA_ROWSCN) oracle_incremental
             """
-            logger.info(f"Incremental SCN query: WHERE ORA_ROWSCN > {last_scn}")
+            logger.info(f"Incremental SCN query: WHERE a.ORA_ROWSCN > {last_scn}")
         else:
             # Initial load: all records with SCN
             incremental_query = f"""
-            (SELECT *, ORA_ROWSCN as CDC_SCN 
-             FROM {table_name} 
-             ORDER BY ORA_ROWSCN) oracle_initial
+            (SELECT a.*, a.ORA_ROWSCN as CDC_SCN 
+             FROM {table_name} a 
+             ORDER BY a.ORA_ROWSCN) oracle_initial
             """
             logger.info("Initial SCN-based full load")
         
