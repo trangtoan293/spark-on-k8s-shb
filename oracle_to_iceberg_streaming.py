@@ -69,16 +69,16 @@ class OracleToIcebergStreaming:
     def create_spark_session(self) -> SparkSession:
         """Create Spark session with Iceberg and Oracle configuration"""
         try:
-            spark = SparkSession.getActiveSession()
-            if spark is None:
+            self.spark = SparkSession.getActiveSession()
+            if self.spark is None:
                 logger.info("No active Spark session found, creating new one")
-                spark = SparkSession.builder.appName("oracle-to-iceberg-streaming").getOrCreate()
+                self.spark = SparkSession.builder.appName("oracle-to-iceberg-streaming").getOrCreate()
             else:
                 logger.info("Reusing existing Spark session")
         except Exception as e:
             logger.warning(f"Spark session setup issue: {e}")
-            spark = None
-        return spark
+            self.spark = None
+        return self.spark
     
     def build_oracle_jdbc_url(self) -> str:
         """Build Oracle JDBC URL from configuration"""
