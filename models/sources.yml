@@ -4,16 +4,4 @@ sources:
   - name: raw_data
     description: Raw data source
     tables:
-      - name: sample_orders
-        description: Sample orders data
-        columns:
-          - name: order_id
-            description: Unique order identifier
-          - name: customer_id
-            description: Customer identifier
-          - name: order_date
-            description: Order date
-          - name: status
-            description: Order status
-          - name: amount
-            description: Order amount
+      - name: customers_stream_test0000

@@ -7,16 +7,16 @@ def model(dbt, session):
 
     dbt.config(enabled=False, materialized="table", packages=["pandas==2.0.0"])
 
-    orders_relation = dbt.ref("stg_orders")
+    orders_relation = dbt.ref("stg_customer")
 
     # converting a DuckDB Python Relation into a pandas DataFrame
     orders_df = orders_relation.df()
 
-    orders_df.sort_values(by="ordered_at", inplace=True)
-    orders_df["previous_order_at"] = orders_df.groupby("customer_id")[
-        "ordered_at"
+    orders_df.sort_values(by="CREATE_DT", inplace=True)
+    orders_df["CREATE_DT"] = orders_df.groupby("customer_id")[
+        "CREATE_DT"
     ].shift(1)
-    orders_df["next_order_at"] = orders_df.groupby("customer_id")["ordered_at"].shift(
+    orders_df["next_order_at"] = orders_df.groupby("customer_id")["CREATE_DT"].shift(
         -1
     )
     return orders_df
