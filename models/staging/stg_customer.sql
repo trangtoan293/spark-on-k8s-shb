@@ -11,5 +11,5 @@ SELECT
     MAIL_TYPCD as mail_address,
     current_timestamp() as loaded_at,
     current_date() as updated_at
-FROM {{ source('raw_data', 'customers_stream_test0000') }}
+FROM {{ source('integration', 'customers_stream_test0000') }}
 where 1=1 
