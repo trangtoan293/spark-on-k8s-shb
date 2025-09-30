@@ -11,21 +11,42 @@ JOB_LOG_TABLE = f"{CONTROL_DB}.job_run_logs"
 
 
 def ensure_control_tables(spark: SparkSession) -> None:
+    """Create control tables for checkpoint and job logging.
+    
+    Note: Iceberg with Spark SQL does not support PRIMARY KEY in CREATE TABLE.
+    Instead, use ALTER TABLE SET IDENTIFIER FIELDS after table creation.
+    """
     spark.sql(f"CREATE DATABASE IF NOT EXISTS {CONTROL_DB}")
+    
+    # Create checkpoint table
     spark.sql(
         f"""
         CREATE TABLE IF NOT EXISTS {CHECKPOINT_TABLE} (
           source_table STRING NOT NULL,
           last_scn BIGINT,
-          updated_at TIMESTAMP,
-          PRIMARY KEY (source_table) NOT ENFORCED
+          updated_at TIMESTAMP
         ) USING iceberg
+        TBLPROPERTIES (
+          'format-version' = '2',
+          'write.upsert.enabled' = 'true'
+        )
         """
     )
+    
+    # Set identifier fields (equivalent to PRIMARY KEY)
+    try:
+        spark.sql(
+            f"ALTER TABLE {CHECKPOINT_TABLE} SET IDENTIFIER FIELDS source_table"
+        )
+    except Exception:
+        # Table might already have identifier fields set
+        pass
+    
+    # Create job log table
     spark.sql(
         f"""
         CREATE TABLE IF NOT EXISTS {JOB_LOG_TABLE} (
-          job_id STRING,
+          job_id STRING NOT NULL,
           source_table STRING,
           iceberg_table STRING,
           status STRING,
@@ -35,8 +56,19 @@ def ensure_control_tables(spark: SparkSession) -> None:
           end_time TIMESTAMP,
           error_message STRING
         ) USING iceberg
+        TBLPROPERTIES (
+          'format-version' = '2'
+        )
         """
     )
+    
+    # Set identifier fields for job log
+    try:
+        spark.sql(
+            f"ALTER TABLE {JOB_LOG_TABLE} SET IDENTIFIER FIELDS job_id"
+        )
+    except Exception:
+        pass
 
 
 def get_last_scn_table(spark: SparkSession, source_table: str) -> Optional[int]:
