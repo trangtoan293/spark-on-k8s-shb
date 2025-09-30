@@ -27,14 +27,14 @@ from typing import Optional
 
 from pyspark.sql.functions import col, max as spark_max
 
-from spark_code.utils.logging import get_logger
-from spark_code.utils.spark import create_spark, ensure_db_exists, ensure_table_exists
-from spark_code.utils.oracle_optimized import (
+from utils.logging import get_logger
+from utils.spark import create_spark, ensure_db_exists, ensure_table_exists
+from utils.oracle_optimized import (
     check_new_data_exists,
     read_oracle_incremental_optimized,
     get_max_scn_from_df
 )
-from spark_code.utils.checkpoint import (
+from utils.checkpoint import (
     ensure_control_tables,
     get_last_scn_table,
     save_last_scn_table,
@@ -42,7 +42,7 @@ from spark_code.utils.checkpoint import (
     save_last_scn_json,
     insert_job_log,
 )
-from spark_code.utils.merge import merge_simple
+from utils.merge import merge_simple
 
 log = get_logger("oracle_to_iceberg_optimized")
 
