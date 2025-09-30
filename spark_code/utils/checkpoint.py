@@ -5,7 +5,7 @@ import uuid
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 
-CONTROL_DB = "system"
+CONTROL_DB = "etladmin"
 CHECKPOINT_TABLE = f"{CONTROL_DB}.oracle_scn_checkpoint"
 JOB_LOG_TABLE = f"{CONTROL_DB}.job_run_logs"
 
