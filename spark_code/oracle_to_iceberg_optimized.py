@@ -5,7 +5,7 @@ Oracle -> Iceberg incremental loader (OPTIMIZED version)
 
 Performance improvements over simple version:
 1. Fast pre-check: Query MAX(ORA_ROWSCN) before reading full data
-2. Partitioned reads: Parallel JDBC reads for large datasets
+2. Increased fetchsize: 10000 rows per fetch (vs 5000 default)
 3. Cached operations: Reuse DataFrames efficiently
 4. Optimized checkpointing: Avoid redundant operations
 
@@ -14,8 +14,7 @@ Usage:
     --oracle-table <SCHEMA.TABLE> \
     --iceberg-table <db.table> \
     --primary-key <ID or "ID1,ID2"> \
-    --checkpoint-location s3a://data/checkpoints/oracle-optimized \
-    --num-partitions 8  # For parallel reads
+    --checkpoint-location s3a://data/checkpoints/oracle-optimized
 
 Version: 2.0.0 - Performance optimized
 """
@@ -54,8 +53,6 @@ def main():
     p.add_argument("--primary-key", default="ID", help="Primary key or comma-separated composite key")
     p.add_argument("--checkpoint-location", default="s3a://data/checkpoints/oracle-optimized", help="Checkpoint base path")
     p.add_argument("--checkpoint-backend", choices=["table", "json"], default=os.getenv("CHECKPOINT_BACKEND", "table"), help="Where to store last SCN")
-    p.add_argument("--num-partitions", type=int, default=4, help="Number of partitions for parallel JDBC reads")
-    p.add_argument("--partition-column", default="ORA_ROWSCN", help="Column for partitioning reads")
     args = p.parse_args()
 
     spark = create_spark("oracle-to-iceberg-optimized")
@@ -91,14 +88,12 @@ def main():
             )
             return
 
-        # OPTIMIZATION 2: Partitioned read for parallel processing
-        log.info("=== OPTIMIZATION: Partitioned read ===")
+        # OPTIMIZATION 2: Optimized read with increased fetchsize
+        log.info("=== OPTIMIZATION: Reading with optimized settings ===")
         df = read_oracle_incremental_optimized(
             spark, 
             args.oracle_table, 
-            last_scn,
-            partition_column=args.partition_column if args.num_partitions > 1 else None,
-            num_partitions=args.num_partitions
+            last_scn
         )
         
         # OPTIMIZATION 3: Cache DataFrame for reuse

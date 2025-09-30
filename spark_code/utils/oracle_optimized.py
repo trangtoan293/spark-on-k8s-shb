@@ -45,7 +45,7 @@ def check_new_data_exists(
     if last_scn:
         query = f"""
         (SELECT MAX(ORA_ROWSCN) AS MAX_SCN, COUNT(*) AS CNT
-         FROM {oracle_table}
+         FROM {oracle_table} 
          WHERE ORA_ROWSCN > {last_scn}) t
         """
     else:
@@ -77,19 +77,18 @@ def check_new_data_exists(
 def read_oracle_incremental_optimized(
     spark: SparkSession, 
     oracle_table: str, 
-    last_scn: Optional[int],
-    partition_column: str = None,
-    num_partitions: int = 4
+    last_scn: Optional[int]
 ) -> DataFrame:
     """
-    Read Oracle incremental data with partitioning for better performance.
+    Read Oracle incremental data with optimized settings.
     
     Args:
         spark: Spark session
         oracle_table: Source table name
         last_scn: Last checkpoint SCN
-        partition_column: Column for partitioning (e.g., 'ORA_ROWSCN' or 'ID')
-        num_partitions: Number of partitions for parallel read
+        
+    Note: JDBC partitioning removed to avoid complexity.
+    Use increased fetchsize for better performance instead.
     """
     jdbc_url = build_oracle_jdbc_url()
     cfg = oracle_config()
@@ -116,16 +115,11 @@ def read_oracle_incremental_optimized(
         "user": cfg["username"],
         "password": cfg["password"],
         "driver": "oracle.jdbc.driver.OracleDriver",
-        "fetchsize": "10000",  # Increased from 5000
+        "fetchsize": "10000",  # Increased from 5000 for better performance
         "queryTimeout": "600",
     }
     
-    # Add partitioning for parallel read if specified
-    if partition_column and num_partitions > 1:
-        options["partitionColumn"] = partition_column
-        options["numPartitions"] = str(num_partitions)
-        log.info(f"Using partitioned read: {num_partitions} partitions on {partition_column}")
-    
+    log.info(f"Reading Oracle with fetchsize={options['fetchsize']}")
     df = spark.read.format("jdbc").options(**options).load()
     return df.withColumn("_cdc_checkpoint_scn", col(SCN_COL).cast(LongType())) \
              .withColumn("_cdc_extracted_at", current_timestamp())
