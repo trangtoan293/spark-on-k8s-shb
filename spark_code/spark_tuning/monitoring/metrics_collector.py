@@ -2,15 +2,21 @@
 Metrics Collector
 
 Collects comprehensive Spark metrics following official monitoring best practices.
-Supports JVM metrics, executor metrics, task metrics, and custom application metrics.
+Uses Spark REST API for reliable metrics collection.
+
+Based on Apache Spark 3.5+ best practices:
+    - REST API for runtime metrics (executors, stages, jobs)
+    - SparkConf for configuration metrics
+    - Fallback to config-based estimation when REST API unavailable
 
 References:
-    - https://spark.apache.org/docs/latest/monitoring.html
-    - Spark metrics system with Prometheus integration
+    - https://spark.apache.org/docs/3.5.2/monitoring.html
+    - https://spark.apache.org/docs/latest/monitoring.html#rest-api
 """
 
 import json
 import logging
+import requests
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
@@ -104,11 +110,33 @@ class MetricsCollector:
         app_name = spark.conf.get("spark.app.name", "spark-app")
         self.metrics_namespace = f"spark.{app_name}"
         
+        # Get Spark UI URL for REST API
+        try:
+            self.ui_url = self.sc.uiWebUrl or "http://localhost:4040"
+            self.app_id = self.sc.applicationId
+        except:
+            self.ui_url = None
+            self.app_id = None
+        
         self.logger.info(f"MetricsCollector initialized for app: {app_name}")
+    
+    def _fetch_rest_api(self, endpoint: str) -> Optional[Any]:
+        """Fetch data from Spark REST API."""
+        if not self.ui_url or not self.app_id:
+            return None
+        
+        try:
+            url = f"{self.ui_url}{endpoint}"
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                return response.json()
+        except Exception as e:
+            self.logger.debug(f"REST API fetch failed for {endpoint}: {e}")
+        return None
     
     def collect_executor_metrics(self) -> List[ExecutorMetrics]:
         """
-        Collect executor-level metrics.
+        Collect executor-level metrics via REST API.
         
         Returns:
             List of ExecutorMetrics objects
@@ -123,41 +151,45 @@ class MetricsCollector:
         timestamp = datetime.utcnow().isoformat()
         
         try:
-            status_tracker = self.sc.statusTracker()
-            executor_infos = status_tracker.getExecutorInfos()
+            # Use REST API
+            executors_data = self._fetch_rest_api(f"/api/v1/applications/{self.app_id}/executors")
             
-            for executor in executor_infos:
-                metrics = ExecutorMetrics(
-                    executor_id=executor.executorId(),
-                    host=executor.host(),
-                    total_cores=executor.totalCores(),
-                    used_cores=0,  # Calculated from active tasks
-                    total_memory_mb=executor.totalOnHeapStorageMemory() // (1024 * 1024),
-                    used_memory_mb=executor.usedOnHeapStorageMemory() // (1024 * 1024),
-                    disk_used_mb=executor.diskUsed() // (1024 * 1024),
-                    active_tasks=0,  # Will be updated
-                    completed_tasks=0,
-                    failed_tasks=0,
-                    total_duration_ms=0,
-                    total_gc_time_ms=0,
-                    total_input_bytes=0,
-                    total_shuffle_read_bytes=0,
-                    total_shuffle_write_bytes=0,
-                    timestamp=timestamp
-                )
-                executor_metrics.append(metrics)
-                
+            if executors_data and isinstance(executors_data, list):
+                for executor in executors_data:
+                    if executor.get('id') == 'driver':
+                        continue  # Skip driver
+                    
+                    metrics = ExecutorMetrics(
+                        executor_id=executor.get('id', 'unknown'),
+                        host=executor.get('hostPort', 'unknown'),
+                        total_cores=executor.get('totalCores', 0),
+                        used_cores=executor.get('activeTasks', 0),
+                        total_memory_mb=executor.get('maxMemory', 0) // (1024 * 1024),
+                        used_memory_mb=executor.get('memoryUsed', 0) // (1024 * 1024),
+                        disk_used_mb=executor.get('diskUsed', 0) // (1024 * 1024),
+                        active_tasks=executor.get('activeTasks', 0),
+                        completed_tasks=executor.get('totalTasks', 0),
+                        failed_tasks=executor.get('failedTasks', 0),
+                        total_duration_ms=executor.get('totalDuration', 0),
+                        total_gc_time_ms=executor.get('totalGCTime', 0),
+                        total_input_bytes=executor.get('totalInputBytes', 0),
+                        total_shuffle_read_bytes=executor.get('totalShuffleRead', 0),
+                        total_shuffle_write_bytes=executor.get('totalShuffleWrite', 0),
+                        timestamp=timestamp
+                    )
+                    executor_metrics.append(metrics)
+                    
         except Exception as e:
-            self.logger.error(f"Failed to collect executor metrics: {e}")
+            self.logger.warning(f"Failed to collect executor metrics: {e}")
         
         return executor_metrics
     
     def collect_stage_metrics(self, job_id: Optional[int] = None) -> List[StageMetrics]:
         """
-        Collect stage-level metrics.
+        Collect stage-level metrics via REST API.
         
         Args:
-            job_id: Filter by specific job ID (None for all active stages)
+            job_id: Filter by specific job ID (None for all stages)
             
         Returns:
             List of StageMetrics objects
@@ -172,39 +204,45 @@ class MetricsCollector:
         timestamp = datetime.utcnow().isoformat()
         
         try:
-            status_tracker = self.sc.statusTracker()
-            active_stage_ids = status_tracker.getActiveStageIds()
+            # Use REST API
+            stages_data = self._fetch_rest_api(f"/api/v1/applications/{self.app_id}/stages")
             
-            for stage_id in active_stage_ids:
-                stage_info = status_tracker.getStageInfo(stage_id)
-                if stage_info:
+            if stages_data and isinstance(stages_data, list):
+                for stage in stages_data:
+                    if not isinstance(stage, dict):
+                        continue
+                    
+                    # Filter by job_id if specified
+                    if job_id is not None and stage.get('jobIds') and job_id not in stage.get('jobIds', []):
+                        continue
+                    
                     metrics = StageMetrics(
-                        stage_id=stage_id,
-                        stage_name=stage_info.name(),
-                        num_tasks=stage_info.numTasks(),
-                        num_completed_tasks=stage_info.numCompletedTasks(),
-                        num_failed_tasks=stage_info.numFailedTasks(),
-                        executor_run_time_ms=0,
-                        executor_cpu_time_ms=0,
-                        shuffle_read_bytes=0,
-                        shuffle_write_bytes=0,
-                        input_bytes=0,
-                        output_bytes=0,
-                        peak_memory_bytes=0,
-                        spill_memory_bytes=0,
-                        spill_disk_bytes=0,
+                        stage_id=stage.get('stageId', 0),
+                        stage_name=stage.get('name', 'unknown'),
+                        num_tasks=stage.get('numTasks', 0),
+                        num_completed_tasks=stage.get('numCompleteTasks', 0),
+                        num_failed_tasks=stage.get('numFailedTasks', 0),
+                        executor_run_time_ms=stage.get('executorRunTime', 0),
+                        executor_cpu_time_ms=stage.get('executorCpuTime', 0),
+                        shuffle_read_bytes=stage.get('shuffleReadBytes', 0),
+                        shuffle_write_bytes=stage.get('shuffleWriteBytes', 0),
+                        input_bytes=stage.get('inputBytes', 0),
+                        output_bytes=stage.get('outputBytes', 0),
+                        peak_memory_bytes=stage.get('peakExecutionMemory', 0),
+                        spill_memory_bytes=stage.get('memoryBytesSpilled', 0),
+                        spill_disk_bytes=stage.get('diskBytesSpilled', 0),
                         timestamp=timestamp
                     )
                     stage_metrics.append(metrics)
                     
         except Exception as e:
-            self.logger.error(f"Failed to collect stage metrics: {e}")
+            self.logger.warning(f"Failed to collect stage metrics: {e}")
         
         return stage_metrics
     
     def collect_job_metrics(self) -> List[JobMetrics]:
         """
-        Collect job-level metrics.
+        Collect job-level metrics via REST API.
         
         Returns:
             List of JobMetrics objects
@@ -219,28 +257,30 @@ class MetricsCollector:
         timestamp = datetime.utcnow().isoformat()
         
         try:
-            status_tracker = self.sc.statusTracker()
-            active_job_ids = status_tracker.getActiveJobIds()
+            # Use REST API
+            jobs_data = self._fetch_rest_api(f"/api/v1/applications/{self.app_id}/jobs")
             
-            for job_id in active_job_ids:
-                job_info = status_tracker.getJobInfo(job_id)
-                if job_info:
+            if jobs_data and isinstance(jobs_data, list):
+                for job in jobs_data:
+                    if not isinstance(job, dict):
+                        continue
+                    
                     metrics = JobMetrics(
-                        job_id=job_id,
-                        job_group=None,
-                        num_stages=len(job_info.stageIds()),
-                        num_completed_stages=0,
-                        num_failed_stages=0,
-                        num_active_tasks=0,
-                        num_completed_tasks=0,
-                        num_failed_tasks=0,
-                        total_duration_ms=0,
+                        job_id=job.get('jobId', 0),
+                        job_group=job.get('jobGroup'),
+                        num_stages=job.get('numStages', 0),
+                        num_completed_stages=job.get('numCompletedStages', 0),
+                        num_failed_stages=job.get('numFailedStages', 0),
+                        num_active_tasks=job.get('numActiveTasks', 0),
+                        num_completed_tasks=job.get('numCompletedTasks', 0),
+                        num_failed_tasks=job.get('numFailedTasks', 0),
+                        total_duration_ms=0,  # Not directly available
                         timestamp=timestamp
                     )
                     job_metrics.append(metrics)
                     
         except Exception as e:
-            self.logger.error(f"Failed to collect job metrics: {e}")
+            self.logger.warning(f"Failed to collect job metrics: {e}")
         
         return job_metrics
     
