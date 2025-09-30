@@ -4,6 +4,9 @@ import uuid
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
+from pyspark.sql.types import (
+    StructType, StructField, StringType, LongType, TimestampType
+)
 
 CONTROL_DB = "etladmin"
 CHECKPOINT_TABLE = f"{CONTROL_DB}.oracle_scn_checkpoint"
@@ -115,20 +118,36 @@ def insert_job_log(
     end_time: datetime,
     error_message: Optional[str] = None,
 ) -> None:
-    data = [
-        {
-            "job_id": str(uuid.uuid4()),
-            "source_table": source_table,
-            "iceberg_table": iceberg_table,
-            "status": status,
-            "rows_processed": int(rows_processed) if rows_processed is not None else None,
-            "max_scn": int(max_scn) if max_scn is not None else None,
-            "start_time": start_time,
-            "end_time": end_time,
-            "error_message": (error_message[:500] if error_message else None),
-        }
-    ]
-    spark.createDataFrame(data).write.mode("append").format("iceberg").saveAsTable(
+    """Insert job log with explicit schema to avoid Spark inference issues."""
+    
+    # Define explicit schema to handle None values
+    schema = StructType([
+        StructField("job_id", StringType(), False),
+        StructField("source_table", StringType(), True),
+        StructField("iceberg_table", StringType(), True),
+        StructField("status", StringType(), True),
+        StructField("rows_processed", LongType(), True),
+        StructField("max_scn", LongType(), True),
+        StructField("start_time", TimestampType(), True),
+        StructField("end_time", TimestampType(), True),
+        StructField("error_message", StringType(), True),
+    ])
+    
+    # Prepare data as tuple (matches schema order)
+    data = [(
+        str(uuid.uuid4()),
+        source_table,
+        iceberg_table,
+        status,
+        int(rows_processed) if rows_processed is not None else None,
+        int(max_scn) if max_scn is not None else None,
+        start_time,
+        end_time,
+        error_message[:500] if error_message else None,
+    )]
+    
+    # Create DataFrame with explicit schema
+    spark.createDataFrame(data, schema).write.mode("append").format("iceberg").saveAsTable(
         JOB_LOG_TABLE
     )
 
