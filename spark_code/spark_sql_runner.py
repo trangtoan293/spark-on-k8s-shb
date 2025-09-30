@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-Spark SQL Executor - Simplified Version
+Spark SQL Executor - Simplified Version (WITH TUNING)
 ========================================
 
 Execute SQL statements from files or text using Spark SQL.
 Simplified architecture using utility modules for better maintainability.
 
+**NEW**: Integrated with spark_tuning for performance monitoring and optimization
+
 Usage:
     python spark_sql_runner.py --sql-file queries.sql
     python spark_sql_runner.py --sql-file queries.sql --database demo
     python spark_sql_runner.py --sql-text "SELECT * FROM demo.customers; SHOW TABLES;"
+    python spark_sql_runner.py --sql-file queries.sql --enable-tuning  # With optimization analysis
 
-Version: 2.0.0 - Refactored with utility modules
+Version: 2.1.0 - Added spark_tuning integration
 """
 
 import sys
@@ -25,19 +28,35 @@ from utils.sql_reader import read_sql_file
 from utils.sql_parser import parse_sql_statements
 from utils.sql_executor import execute_statements, save_results
 
+# Import spark_tuning for performance monitoring
+from spark_tuning import (
+    MetricsCollector,
+    PerformanceProfiler,
+    QueryOptimizer,
+    ResourceTracker
+)
+
 log = get_logger(__name__)
 
 def execute_sql_file_wrapper(
     spark,
     file_path: str,
     continue_on_error: bool = True,
-    default_database: str = None
+    default_database: str = None,
+    profiler: PerformanceProfiler = None
 ) -> List[Dict[str, Any]]:
-    """Execute SQL file with multiple statements"""
+    """Execute SQL file with multiple statements (with optional profiling)"""
     log.info(f"=== Executing SQL file: {file_path} ===")
     
     # Read and parse SQL file
-    sql_content = read_sql_file(spark, file_path)
+    if profiler:
+        @profiler.profile_function("read_sql_file")
+        def read_file():
+            return read_sql_file(spark, file_path)
+        sql_content = read_file()
+    else:
+        sql_content = read_sql_file(spark, file_path)
+    
     statements = parse_sql_statements(sql_content)
     
     if not statements:
@@ -45,16 +64,23 @@ def execute_sql_file_wrapper(
         return []
     
     # Execute statements
-    return execute_statements(spark, statements, continue_on_error, default_database)
+    if profiler:
+        @profiler.profile_function("execute_statements")
+        def exec_stmts():
+            return execute_statements(spark, statements, continue_on_error, default_database)
+        return exec_stmts()
+    else:
+        return execute_statements(spark, statements, continue_on_error, default_database)
 
 
 def execute_sql_text_wrapper(
     spark,
     sql_text: str,
     continue_on_error: bool = True,
-    default_database: str = None
+    default_database: str = None,
+    profiler: PerformanceProfiler = None
 ) -> List[Dict[str, Any]]:
-    """Execute SQL text with multiple statements"""
+    """Execute SQL text with multiple statements (with optional profiling)"""
     log.info("=== Executing SQL text ===")
     
     # Parse SQL statements
@@ -65,7 +91,13 @@ def execute_sql_text_wrapper(
         return []
     
     # Execute statements
-    return execute_statements(spark, statements, continue_on_error, default_database)
+    if profiler:
+        @profiler.profile_function("execute_statements")
+        def exec_stmts():
+            return execute_statements(spark, statements, continue_on_error, default_database)
+        return exec_stmts()
+    else:
+        return execute_statements(spark, statements, continue_on_error, default_database)
 
 def main():
     """Main function - simplified argument handling"""
@@ -90,11 +122,28 @@ def main():
     parser.add_argument("--verbose", action="store_true", 
                        help="Verbose logging")
     
+    # Tuning options
+    parser.add_argument("--enable-tuning", action="store_true",
+                       help="Enable performance monitoring and optimization analysis")
+    parser.add_argument("--export-metrics", help="Export metrics to JSON file")
+    
     args = parser.parse_args()
     continue_on_error = not args.stop_on_error
     
     # Create Spark session
     spark = create_spark("spark-sql-runner")
+    
+    # Initialize tuning tools if enabled
+    collector = None
+    profiler = None
+    tracker = None
+    
+    if args.enable_tuning:
+        log.info("=== Spark Tuning Enabled ===")
+        collector = MetricsCollector(spark)
+        profiler = PerformanceProfiler(spark, auto_analyze=True)
+        tracker = ResourceTracker(spark, enable_alerts=True)
+        tracker.capture_snapshot()  # Initial snapshot
     
     try:
         # Dry run mode
@@ -114,16 +163,47 @@ def main():
         # Execute SQL
         if args.sql_file:
             results = execute_sql_file_wrapper(
-                spark, args.sql_file, continue_on_error, args.database
+                spark, args.sql_file, continue_on_error, args.database, profiler
             )
         else:
             results = execute_sql_text_wrapper(
-                spark, args.sql_text, continue_on_error, args.database
+                spark, args.sql_text, continue_on_error, args.database, profiler
             )
         
         # Save results if requested
         if args.output_path and results:
             save_results(spark, results, args.output_path)
+        
+        # Print tuning reports if enabled
+        if args.enable_tuning:
+            log.info("\n" + "="*80)
+            log.info("SPARK TUNING REPORT")
+            log.info("="*80)
+            
+            # Print metrics summary
+            if collector:
+                collector.print_summary()
+            
+            # Print performance profile
+            if profiler:
+                profiler.print_profile_summary()
+            
+            # Print resource summary and alerts
+            if tracker:
+                tracker.capture_snapshot()  # Final snapshot
+                tracker.print_resource_summary()
+                
+                # Show critical alerts
+                alerts = tracker.get_active_alerts("CRITICAL")
+                if alerts:
+                    log.warning(f"\n⚠️  {len(alerts)} CRITICAL ALERTS:")
+                    for alert in alerts[:3]:  # Top 3
+                        log.warning(f"  - {alert.message}")
+            
+            # Export metrics if requested
+            if args.export_metrics and collector:
+                collector.export_to_json(args.export_metrics)
+                log.info(f"\n📊 Metrics exported to: {args.export_metrics}")
         
         # Exit with appropriate code
         error_count = sum(1 for r in results if r["status"] == "error")

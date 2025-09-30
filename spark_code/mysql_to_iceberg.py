@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-MySQL -> Iceberg incremental loader
+MySQL -> Iceberg incremental loader (WITH TUNING)
 ====================================
 
 Purpose:
 - Incremental loader for MySQL -> Iceberg using ID-based CDC.
 - Similar to Oracle loader but optimized for MySQL.
 - Supports both ID-based and timestamp-based CDC.
+- **NEW**: Integrated spark_tuning for monitoring and optimization
 
 Requirements (via environment variables):
 - MYSQL_HOST, MYSQL_PORT, MYSQL_DATABASE, MYSQL_USERNAME, MYSQL_PASSWORD
@@ -51,6 +52,14 @@ from utils.checkpoint import (
 from utils.merge import merge_simple
 from utils.configs import checkpoint_config
 
+# Import spark_tuning
+from spark_tuning import (
+    MetricsCollector,
+    PerformanceProfiler,
+    SkewDetector,
+    ResourceTracker
+)
+
 log = get_logger("mysql_to_iceberg")
 
 
@@ -62,9 +71,21 @@ def main():
     p.add_argument("--id-column", default="id", help="ID column for incremental CDC (default: id)")
     p.add_argument("--checkpoint-location", default="s3a://data/checkpoints/mysql", help="Checkpoint base path")
     p.add_argument("--checkpoint-backend", choices=["table", "json"], default=None, help="Where to store last ID")
+    p.add_argument("--enable-tuning", action="store_true", help="Enable spark_tuning monitoring")
+    p.add_argument("--export-metrics", help="Export metrics to JSON")
     args = p.parse_args()
 
     spark = create_spark("mysql-to-iceberg")
+
+    # Initialize tuning tools
+    collector = profiler = skew_detector = tracker = None
+    if args.enable_tuning:
+        log.info("=== Spark Tuning Enabled ===")
+        collector = MetricsCollector(spark)
+        profiler = PerformanceProfiler(spark, auto_analyze=True)
+        skew_detector = SkewDetector(spark)
+        tracker = ResourceTracker(spark, enable_alerts=True)
+        tracker.capture_snapshot()
 
     try:
         # Ensure control tables and decide backend
@@ -109,17 +130,32 @@ def main():
 
         # OPTIMIZATION 2: Optimized read with increased fetchsize
         log.info("=== OPTIMIZATION: Reading with optimized settings ===")
-        df = read_mysql_incremental(
-            spark, 
-            args.mysql_table, 
-            last_id,
-            args.id_column
-        )
+        
+        if profiler:
+            @profiler.profile_function("mysql_read")
+            def read_data():
+                return read_mysql_incremental(spark, args.mysql_table, last_id, args.id_column)
+            df = read_data()
+        else:
+            df = read_mysql_incremental(spark, args.mysql_table, last_id, args.id_column)
         
         # OPTIMIZATION 3: Cache DataFrame for reuse
         df.cache()
-        row_count = df.count()
+        
+        if profiler:
+            count_result = profiler.profile_dataframe_action(df, "count", df.count)
+            row_count = count_result.num_rows
+        else:
+            row_count = df.count()
+        
         log.info(f"Read {row_count} rows from MySQL")
+        
+        # Check skew
+        if args.enable_tuning and skew_detector and row_count > 10000:
+            has_skew, skew_info = skew_detector.detect_skew(df, sample_fraction=0.1)
+            if has_skew:
+                log.warning("⚠️  Data skew detected!")
+                skew_detector.print_skew_analysis(skew_info)
 
         # Ensure DB/table exists
         ensure_db_exists(spark, args.iceberg_table)
@@ -130,7 +166,13 @@ def main():
         log.info(f"Max ID from fast check: {max_id}")
 
         # Perform MERGE
-        merge_simple(spark, df, args.iceberg_table, args.primary_key)
+        if profiler:
+            @profiler.profile_function("iceberg_merge")
+            def do_merge():
+                merge_simple(spark, df, args.iceberg_table, args.primary_key)
+            do_merge()
+        else:
+            merge_simple(spark, df, args.iceberg_table, args.primary_key)
 
         # Update checkpoint
         if max_id is not None:
@@ -155,6 +197,22 @@ def main():
         
         # Cleanup
         df.unpersist()
+        
+        # Print tuning report
+        if args.enable_tuning:
+            log.info("\n" + "="*80)
+            log.info("SPARK TUNING REPORT - MySQL to Iceberg")
+            log.info("="*80)
+            if collector:
+                collector.print_summary()
+            if profiler:
+                profiler.print_profile_summary()
+            if tracker:
+                tracker.capture_snapshot()
+                tracker.print_resource_summary()
+            if args.export_metrics and collector:
+                collector.export_to_json(args.export_metrics)
+                log.info(f"📊 Metrics exported to: {args.export_metrics}")
         
     except Exception as e:
         # Job run log (FAILED)
