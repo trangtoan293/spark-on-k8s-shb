@@ -1,39 +1,38 @@
 #!/usr/bin/env python3
 """
-Oracle -> Iceberg incremental loader (simple, ORA_ROWSCN-based)
-==============================================================
+Oracle -> Iceberg incremental loader (OPTIMIZED version)
+=========================================================
 
-Purpose:
-- Minimal, readable one-shot job for Oracle -> Iceberg using ORA_ROWSCN (SCN) as CDC.
-- No streaming loop, no external config manager. Designed to be run on a schedule.
-
-Requirements (via environment variables):
-- ORACLE_HOST, ORACLE_PORT, ORACLE_SERVICE, ORACLE_USERNAME, ORACLE_PASSWORD
+Performance improvements over simple version:
+1. Fast pre-check: Query MAX(ORA_ROWSCN) before reading full data
+2. Increased fetchsize: 10000 rows per fetch (vs 5000 default)
+3. Cached operations: Reuse DataFrames efficiently
+4. Optimized checkpointing: Avoid redundant operations
 
 Usage:
-  python oracle_to_iceberg_simple.py \
+  python oracle_to_iceberg_optimized.py \
     --oracle-table <SCHEMA.TABLE> \
     --iceberg-table <db.table> \
     --primary-key <ID or "ID1,ID2"> \
-    --checkpoint-location s3a://data/checkpoints/oracle-simple
+    --checkpoint-location s3a://data/checkpoints/oracle-optimized
 
-Notes:
-- This job only runs one incremental batch per execution.
-- Supports checkpoint backends: table (default, Iceberg control table) or JSON file on object storage (`--checkpoint-backend table|json`).
-- Performs a single MERGE into the target Iceberg table and then advances the SCN checkpoint.
+Version: 2.0.0 - Performance optimized
 """
 
 import os
 import argparse
 from datetime import datetime
 from typing import Optional
-
 from pyspark.sql.functions import col, max as spark_max
 
-from spark_code.utils.logging import get_logger
-from spark_code.utils.spark import create_spark, ensure_db_exists, ensure_table_exists
-from spark_code.utils.oracle import read_oracle_incremental
-from spark_code.utils.checkpoint import (
+from utils.logging import get_logger
+from utils.spark import create_spark, ensure_db_exists, ensure_table_exists
+from utils.oracle import (
+    check_new_data_exists,
+    read_oracle_incremental_optimized,
+    get_max_scn_from_df
+)
+from utils.checkpoint import (
     ensure_control_tables,
     get_last_scn_table,
     save_last_scn_table,
@@ -41,21 +40,21 @@ from spark_code.utils.checkpoint import (
     save_last_scn_json,
     insert_job_log,
 )
-from spark_code.utils.merge import merge_simple
+from utils.merge import merge_simple
 
-log = get_logger("oracle_to_iceberg_simple")
+log = get_logger("oracle_to_iceberg_optimized")
 
 
 def main():
-    p = argparse.ArgumentParser(description="Simple Oracle -> Iceberg incremental (ORA_ROWSCN)")
+    p = argparse.ArgumentParser(description="Optimized Oracle -> Iceberg incremental (ORA_ROWSCN)")
     p.add_argument("--oracle-table", required=True, help="Source table, e.g. SCHEMA.TABLE")
     p.add_argument("--iceberg-table", required=True, help="Target Iceberg table, e.g. integration.customers")
     p.add_argument("--primary-key", default="ID", help="Primary key or comma-separated composite key")
-    p.add_argument("--checkpoint-location", default="s3a://data/checkpoints/oracle-simple", help="Checkpoint base path")
-    p.add_argument("--checkpoint-backend", choices=["table", "json"], default=os.getenv("CHECKPOINT_BACKEND", "table"), help="Where to store last SCN (default: table)")
+    p.add_argument("--checkpoint-location", default="s3a://data/checkpoints/oracle-optimized", help="Checkpoint base path")
+    p.add_argument("--checkpoint-backend", choices=["table", "json"], default=os.getenv("CHECKPOINT_BACKEND", "table"), help="Where to store last SCN")
     args = p.parse_args()
 
-    spark = create_spark()
+    spark = create_spark("oracle-to-iceberg-optimized")
 
     try:
         # Ensure control tables and decide backend
@@ -69,11 +68,16 @@ def main():
         )
 
         job_start = datetime.utcnow()
-        df = read_oracle_incremental(spark, args.oracle_table, last_scn)
-        if df.count() == 0:
-            log.info("No new data detected. Exiting.")
+        
+        # OPTIMIZATION 1: Fast pre-check without reading full table
+        log.info("=== OPTIMIZATION: Fast data check ===")
+        has_new_data, max_scn_in_source = check_new_data_exists(spark, args.oracle_table, last_scn)
+        
+        if not has_new_data:
+            log.info("No new data detected (fast check). Exiting.")
             insert_job_log(
                 spark,
+                source_system="oracle",
                 source_table=args.oracle_table,
                 iceberg_table=args.iceberg_table,
                 status="NOOP",
@@ -84,15 +88,31 @@ def main():
             )
             return
 
-        # Ensure DB/table, then MERGE
+        # OPTIMIZATION 2: Optimized read with increased fetchsize
+        log.info("=== OPTIMIZATION: Reading with optimized settings ===")
+        df = read_oracle_incremental_optimized(
+            spark, 
+            args.oracle_table, 
+            last_scn
+        )
+        
+        # OPTIMIZATION 3: Cache DataFrame for reuse
+        df.cache()
+        row_count = df.count()
+        log.info(f"Read {row_count} rows from Oracle")
+
+        # Ensure DB/table exists
         ensure_db_exists(spark, args.iceberg_table)
         ensure_table_exists(spark, args.iceberg_table, df)
 
-        # Capture max SCN before merge for checkpoint
-        max_scn = df.agg(spark_max(col("_cdc_checkpoint_scn")).alias("m")).collect()[0]["m"]
+        # OPTIMIZATION 4: Get max SCN efficiently (already have it from pre-check!)
+        max_scn = max_scn_in_source  # Reuse from fast check
+        log.info(f"Max SCN from fast check: {max_scn}")
 
+        # Perform MERGE
         merge_simple(spark, df, args.iceberg_table, args.primary_key)
 
+        # Update checkpoint
         if max_scn is not None:
             if use_table:
                 save_last_scn_table(spark, args.oracle_table, int(max_scn))
@@ -103,19 +123,25 @@ def main():
         # Job run log (SUCCESS)
         insert_job_log(
             spark,
+            source_system="oracle",
             source_table=args.oracle_table,
             iceberg_table=args.iceberg_table,
             status="SUCCESS",
-            rows_processed=df.count(),
+            rows_processed=row_count,
             max_scn=max_scn,
             start_time=job_start,
             end_time=datetime.utcnow(),
         )
+        
+        # Cleanup
+        df.unpersist()
+        
     except Exception as e:
         # Job run log (FAILED)
         try:
             insert_job_log(
                 spark,
+                source_system="oracle",
                 source_table=args.oracle_table,
                 iceberg_table=args.iceberg_table,
                 status="FAILED",
@@ -126,7 +152,6 @@ def main():
                 error_message=str(e),
             )
         except Exception:
-            # Avoid masking original error if logging fails
             pass
         raise
     finally:

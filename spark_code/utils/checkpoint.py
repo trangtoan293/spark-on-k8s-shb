@@ -8,9 +8,13 @@ from pyspark.sql.types import (
     StructType, StructField, StringType, LongType, TimestampType
 )
 
-CONTROL_DB = "etladmin"
-CHECKPOINT_TABLE = f"{CONTROL_DB}.oracle_scn_checkpoint"
-JOB_LOG_TABLE = f"{CONTROL_DB}.job_run_logs"
+from .configs import control_config
+
+# Get control configuration from environment
+_ctrl_cfg = control_config()
+CONTROL_DB = _ctrl_cfg.control_db
+CHECKPOINT_TABLE = _ctrl_cfg.full_checkpoint_table
+JOB_LOG_TABLE = _ctrl_cfg.full_job_log_table
 
 
 def ensure_control_tables(spark: SparkSession) -> None:
@@ -50,6 +54,7 @@ def ensure_control_tables(spark: SparkSession) -> None:
         f"""
         CREATE TABLE IF NOT EXISTS {JOB_LOG_TABLE} (
           job_id STRING NOT NULL,
+          source_system STRING,
           source_table STRING,
           iceberg_table STRING,
           status STRING,
@@ -109,6 +114,7 @@ def save_last_scn_table(spark: SparkSession, source_table: str, scn: int) -> Non
 
 def insert_job_log(
     spark: SparkSession,
+    source_system: str,
     source_table: str,
     iceberg_table: str,
     status: str,
@@ -118,11 +124,25 @@ def insert_job_log(
     end_time: datetime,
     error_message: Optional[str] = None,
 ) -> None:
-    """Insert job log with explicit schema to avoid Spark inference issues."""
+    """
+    Insert job log with explicit schema to avoid Spark inference issues.
+    
+    Args:
+        source_system: Source database type (oracle, mysql, mssql)
+        source_table: Source table name
+        iceberg_table: Target Iceberg table
+        status: Job status (SUCCESS, FAILED, NOOP)
+        rows_processed: Number of rows processed
+        max_scn: Maximum SCN/ID processed
+        start_time: Job start time
+        end_time: Job end time
+        error_message: Error message if failed
+    """
     
     # Define explicit schema to handle None values
     schema = StructType([
         StructField("job_id", StringType(), False),
+        StructField("source_system", StringType(), True),
         StructField("source_table", StringType(), True),
         StructField("iceberg_table", StringType(), True),
         StructField("status", StringType(), True),
@@ -136,6 +156,7 @@ def insert_job_log(
     # Prepare data as tuple (matches schema order)
     data = [(
         str(uuid.uuid4()),
+        source_system,
         source_table,
         iceberg_table,
         status,
