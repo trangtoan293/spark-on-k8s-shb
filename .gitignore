@@ -6,7 +6,7 @@ logs/
 
 # dbt packages (installed via dbt deps)
 dbt_packages/
-
+.DS_Store
 # Python
 __pycache__/
 *.py[cod]

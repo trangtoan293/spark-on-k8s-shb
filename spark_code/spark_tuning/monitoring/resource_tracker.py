@@ -118,35 +118,45 @@ class ResourceTracker:
         
         try:
             status_tracker = self.sc.statusTracker()
-            executor_infos = status_tracker.getExecutorInfos()
             
-            # Aggregate executor metrics
-            total_memory = 0
-            used_memory = 0
-            total_storage = 0
-            used_storage = 0
-            total_cores = 0
-            total_gc_time = 0
+            # Get executor memory info from SparkConf
+            conf = self.spark.sparkContext.getConf()
+            executor_memory_str = conf.get("spark.executor.memory", "1g")
             
-            for executor in executor_infos:
-                total_memory += executor.totalOnHeapStorageMemory()
-                used_memory += executor.usedOnHeapStorageMemory()
-                total_storage += executor.totalOnHeapStorageMemory()
-                used_storage += executor.usedOnHeapStorageMemory()
-                total_cores += executor.totalCores()
+            # Parse executor memory (e.g., "4g" -> 4096 MB)
+            if executor_memory_str.endswith('g'):
+                executor_memory_mb = int(executor_memory_str[:-1]) * 1024
+            elif executor_memory_str.endswith('m'):
+                executor_memory_mb = int(executor_memory_str[:-1])
+            else:
+                executor_memory_mb = 1024  # Default 1GB
             
-            # Convert to MB
-            total_memory_mb = total_memory // (1024 * 1024) if total_memory > 0 else 0
-            used_memory_mb = used_memory // (1024 * 1024) if used_memory > 0 else 0
-            total_storage_mb = total_storage // (1024 * 1024) if total_storage > 0 else 0
-            used_storage_mb = used_storage // (1024 * 1024) if used_storage > 0 else 0
+            # Get number of executors from active jobs
+            active_job_ids = status_tracker.getActiveJobIds()
+            
+            # Try to get executor count from different sources
+            num_executors = 0
+            try:
+                # Try dynamic allocation settings
+                num_executors = int(conf.get("spark.executor.instances", "0"))
+            except:
+                pass
+            
+            if num_executors == 0:
+                # Fallback: estimate from active stages
+                num_executors = max(len(active_job_ids), 1)
+            
+            # Calculate total memory
+            total_memory_mb = executor_memory_mb * num_executors
+            
+            # Estimate used memory (we can't get exact without executor API)
+            # Use a conservative estimate based on active jobs
+            used_memory_mb = int(total_memory_mb * 0.5) if len(active_job_ids) > 0 else 0
             
             # Calculate utilization
-            memory_util = (used_memory / total_memory * 100) if total_memory > 0 else 0
-            storage_util = (used_storage / total_storage * 100) if total_storage > 0 else 0
+            memory_util = (used_memory_mb / total_memory_mb * 100) if total_memory_mb > 0 else 0
             
-            # Task metrics
-            active_job_ids = status_tracker.getActiveJobIds()
+            # Task metrics from active jobs
             active_tasks = 0
             completed_tasks = 0
             failed_tasks = 0
@@ -154,23 +164,32 @@ class ResourceTracker:
             for job_id in active_job_ids:
                 job_info = status_tracker.getJobInfo(job_id)
                 if job_info:
-                    # Task counts would need to be aggregated from stages
-                    pass
+                    active_stage_ids = status_tracker.getActiveStageIds()
+                    for stage_id in active_stage_ids:
+                        stage_info = status_tracker.getStageInfo(stage_id)
+                        if stage_info:
+                            active_tasks += stage_info.numActiveTasks()
+                            completed_tasks += stage_info.numCompletedTasks()
+                            failed_tasks += stage_info.numFailedTasks()
+            
+            # Get executor cores
+            executor_cores = int(conf.get("spark.executor.cores", "1"))
+            total_cores = executor_cores * num_executors
             
             snapshot = ResourceSnapshot(
                 timestamp=timestamp,
                 total_memory_mb=total_memory_mb,
                 used_memory_mb=used_memory_mb,
                 memory_utilization_pct=memory_util,
-                total_storage_mb=total_storage_mb,
-                used_storage_mb=used_storage_mb,
-                storage_utilization_pct=storage_util,
+                total_storage_mb=total_memory_mb,  # Use same as memory
+                used_storage_mb=used_memory_mb,
+                storage_utilization_pct=memory_util,
                 active_tasks=active_tasks,
                 completed_tasks=completed_tasks,
                 failed_tasks=failed_tasks,
-                active_executors=len(executor_infos),
+                active_executors=num_executors,
                 total_cores=total_cores,
-                total_gc_time_ms=total_gc_time,
+                total_gc_time_ms=0,  # Not available without executor API
                 shuffle_read_mb=0,
                 shuffle_write_mb=0
             )
@@ -185,7 +204,26 @@ class ResourceTracker:
             
         except Exception as e:
             self.logger.error(f"Failed to capture resource snapshot: {e}")
-            raise
+            # Return a minimal snapshot instead of raising
+            snapshot = ResourceSnapshot(
+                timestamp=timestamp,
+                total_memory_mb=0,
+                used_memory_mb=0,
+                memory_utilization_pct=0,
+                total_storage_mb=0,
+                used_storage_mb=0,
+                storage_utilization_pct=0,
+                active_tasks=0,
+                completed_tasks=0,
+                failed_tasks=0,
+                active_executors=0,
+                total_cores=0,
+                total_gc_time_ms=0,
+                shuffle_read_mb=0,
+                shuffle_write_mb=0
+            )
+            self.snapshots.append(snapshot)
+            return snapshot
     
     def _check_and_generate_alerts(self, snapshot: ResourceSnapshot) -> None:
         """
