@@ -97,15 +97,13 @@ def read_mssql_incremental(
         query = f"""
         (SELECT a.*, a.{id_column} AS _cdc_checkpoint_id
          FROM {mssql_table} a
-         WHERE a.{id_column} > {last_id}
-         ORDER BY a.{id_column}) t
+         WHERE a.{id_column} > {last_id}) t
         """
         log.info(f"Incremental read WHERE {id_column} > {last_id}")
     else:
         query = f"""
         (SELECT a.*, a.{id_column} AS _cdc_checkpoint_id
-         FROM {mssql_table} a
-         ORDER BY a.{id_column}) t
+         FROM {mssql_table} a) t
         """
         log.info("Initial full read (no checkpoint found)")
 
@@ -149,15 +147,13 @@ def read_mssql_with_timestamp_cdc(
         query = f"""
         (SELECT a.*
          FROM {mssql_table} a
-         WHERE a.{timestamp_column} > '{last_timestamp}'
-         ORDER BY a.{timestamp_column}) t
+         WHERE a.{timestamp_column} > '{last_timestamp}') t
         """
         log.info(f"Incremental read WHERE {timestamp_column} > '{last_timestamp}'")
     else:
         query = f"""
         (SELECT a.*
-         FROM {mssql_table} a
-         ORDER BY a.{timestamp_column}) t
+         FROM {mssql_table} a) t
         """
         log.info("Initial full read (no checkpoint found)")
 
