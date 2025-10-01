@@ -1,7 +1,0 @@
-version: 2
-
-sources:
-  - name: integration
-    description: Raw data source
-    tables:
-      - name: customers_stream_test0000

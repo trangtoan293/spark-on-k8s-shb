@@ -1,0 +1,108 @@
+collision_code: CARD
+columns:
+- dtype: string
+  key_type: hash_key_sat
+  source: 'null'
+  target: dv_hkey_sat_card_corp
+
+- dtype: string
+  key_type: hash_key_hub
+  source:
+  - CO_CORPORATE_ID
+  target: dv_hkey_hub_corp
+
+- dtype: string
+  key_type: hash_diff
+  target: dv_hsh_dif
+
+- dtype: string
+  source:
+    dtype: string
+    name: CO_COMPANY_NAME
+  target: CO_COMPANY_NAME
+
+- dtype: bigint
+  source:
+    dtype: bigint
+    name: CB_CUSTOMER_CODE
+  target: CB_CUSTOMER_CODE
+
+- dtype: string
+  source:
+    dtype: string
+    name: CUS_ESTAB_CODE
+  target: CUS_ESTAB_CODE
+
+- dtype: string
+  source:
+    dtype: string
+    name: CUS_ESTAB_CODE_ISS_AUTH
+  target: CUS_ESTAB_CODE_ISS_AUTH
+
+- dtype: date
+  source:
+    dtype: date
+    name: CO_REGISTRATION_DATE   
+  target: CO_REGISTRATION_DATE   
+
+- dtype: string   
+  source:
+    dtype: string   
+    name: CB_EMAIL               
+  target: CB_EMAIL               
+
+- dtype: string   
+  source:
+    dtype: string   
+    name: CO_REG_ADD_LINE1       
+  target: CO_REG_ADD_LINE1       
+
+- dtype: string
+  source:
+    dtype: string
+    name: CB_ISS_AUTH            
+  target: CB_ISS_AUTH     
+
+- dtype: string
+  source:
+    dtype: string
+    name: CB_CUSTOMER_IDNO                   
+  target: CB_CUSTOMER_IDNO                
+
+- dtype: date     
+  source:
+    dtype: date     
+    name: CB_USER2_DATE_1        
+  target: CB_USER2_DATE_1        
+
+- dtype: string   
+  source:
+    dtype: string   
+    name: CB_RESIDENCY_CODE      
+  target: CB_RESIDENCY_CODE      
+
+- dtype: string   
+  source:
+    dtype: string   
+    name: CB_MOBILE_NO           
+  target: CB_MOBILE_NO           
+
+- dtype: date     
+  source:
+    dtype: date     
+    name: CUS_CREATION_DATE      
+  target: CUS_CREATION_DATE    
+
+- dtype: string        
+  source:
+    dtype: string        
+    name: BRN_CODE                     
+  target: BRN_CODE                     
+
+description: ''
+parent_table: hub_corp
+source_schema: source
+source_table: corecard_corp
+target_entity_type: sat
+target_schema: integration_demo
+target_table: sat_card_corp  

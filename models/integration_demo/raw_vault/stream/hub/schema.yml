@@ -1,0 +1,30 @@
+version: 2
+
+models:
+
+    - name: hub_indi
+      columns:
+        - name: dv_hkey_hub_indi
+          tests:
+            - unique
+            - not_null
+            - ghost_record
+            - hub_w_source:
+                model_name_card: hub_card_indi 
+                model_name_core: hub_core_indi
+                model_name_crm: hub_crm_indi
+    
+    - name: hub_corp
+      columns:
+        - name: dv_hkey_hub_corp
+          tests:
+            - unique
+            - not_null
+            - ghost_record
+            - hub_corp_w_source:
+                model_name_card: hub_card_corp 
+                model_name_core: hub_core_corp                
+
+
+
+

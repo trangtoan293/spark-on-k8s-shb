@@ -1,0 +1,1 @@
+SELECT * FROM {{ref("dim_crm_indi")}}

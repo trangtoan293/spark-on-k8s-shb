@@ -1,0 +1,56 @@
+target_schema: integration_demo
+target_table: hub_indi
+target_entity_type: hub
+description: ''
+
+sources:
+  - source_schema: source
+    source_table: corebank_customer
+    collision_code: CORE
+    columns:
+    - dtype: string
+      key_type: hash_key_hub
+      source:
+      - CUS_CUSTOMER_CODE
+      target: dv_hkey_hub_indi
+      
+    - dtype: int
+      key_type: biz_key
+      source:
+        dtype: int
+        name: CUS_CUSTOMER_CODE
+      target: CUS_CUSTOMER_CODE
+
+  - source_schema: source
+    source_table: corecard_customer
+    collision_code: CARD
+    columns:
+    - dtype: string
+      key_type: hash_key_hub
+      source:
+      - CB_CUS_ID
+      target: dv_hkey_hub_indi
+      
+    - dtype: int
+      key_type: biz_key
+      source:
+        dtype: int
+        name: CB_CUS_ID
+      target: CUS_CUSTOMER_CODE
+
+  - source_schema: source
+    source_table: crm_customer
+    collision_code: CRM
+    columns:
+    - dtype: string
+      key_type: hash_key_hub
+      source:
+      - CRM_CUS_ID
+      target: dv_hkey_hub_indi
+      
+    - dtype: int
+      key_type: biz_key
+      source:
+        dtype: int
+        name: CRM_CUS_ID
+      target: CUS_CUSTOMER_CODE

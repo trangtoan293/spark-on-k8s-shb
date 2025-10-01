@@ -1,0 +1,21 @@
+collision_code: CARD
+columns:
+- dtype: string
+  key_type: hash_key_hub
+  source:
+  - CB_CUS_ID
+  target: dv_hkey_hub_indi
+  
+- dtype: int
+  key_type: biz_key
+  source:
+    dtype: int
+    name: CB_CUS_ID
+  target: CUS_CUSTOMER_CODE
+
+description: ''
+source_schema: source
+source_table: corecard_customer
+target_entity_type: hub
+target_schema: integration_demo
+target_table: hub_card_indi

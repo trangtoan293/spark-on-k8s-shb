@@ -1,0 +1,102 @@
+collision_code: CARD
+columns:
+- dtype: string
+  key_type: hash_key_sat
+  source: 'null'
+  target: dv_hkey_sat_card_indi
+
+- dtype: string
+  key_type: hash_key_hub
+  source:
+  - CB_CUS_ID
+  target: dv_hkey_hub_indi
+
+- dtype: string
+  key_type: hash_diff
+  target: dv_hsh_dif
+
+- dtype: int
+  source:
+    dtype: int
+    name: CB_CIF_NO
+  target: CB_CIF_NO
+
+- dtype: int
+  source:
+    dtype: int
+    name: CB_CUSTOMER_IDNO
+  target: CB_CUSTOMER_IDNO
+
+- dtype: string
+  source:
+    dtype: string
+    name: CB_SEX
+  target: CB_SEX
+
+- dtype: date
+  source:
+    dtype: date
+    name: CB_DOB
+  target: CB_DOB
+
+- dtype: string
+  source:
+    dtype: string
+    name: CB_NATIONALITY
+  target: CB_NATIONALITY
+
+- dtype: string
+  source:
+    dtype: string
+    name: CB_MOBILE_NO
+  target: CB_MOBILE_NO
+
+- dtype: string
+  source:
+    dtype: string
+    name: CB_EMAIL
+  target: CB_EMAIL
+
+- dtype: date
+  source:
+    dtype: date
+    name: CB_USER2_DATE_1
+  target: CB_USER2_DATE_1
+
+- dtype: string
+  source:
+    dtype: string
+    name: CB_OCCUPN
+  target: CB_OCCUPN
+
+- dtype: string
+  source:
+    dtype: string
+    name: CB_CARDHOLDER_NAME
+  target: CB_CARDHOLDER_NAME
+
+- dtype: string
+  source:
+    dtype: string
+    name: CB_ID_TYPE
+  target: CB_ID_TYPE
+
+- dtype: date
+  source:
+    dtype: date
+    name: CB_CREATION_DATE
+  target: CB_CREATION_DATE
+
+- dtype: string
+  source:
+    dtype: string
+    name: BRN_CODE
+  target: BRN_CODE
+
+description: ''
+parent_table: hub_indi
+source_schema: source
+source_table: corecard_customer
+target_entity_type: sat
+target_schema: integration_demo
+target_table: sat_card_indi

@@ -1,0 +1,39 @@
+target_entity_type: hub
+target_schema: integration_demo
+target_table: hub_corp
+description: ''
+
+sources:
+  - source_schema: source
+    source_table: corebank_corp
+    collision_code: CORE
+    columns:
+      - target: dv_hkey_hub_corp
+        dtype: string
+        key_type: hash_key_hub
+        source:
+          - CUS_CUSTOMER_CODE
+
+      - target: CUS_CUSTOMER_CODE
+        dtype: int
+        key_type: biz_key
+        source:
+          name: CUS_CUSTOMER_CODE
+          dtype: int
+    
+  - source_schema: source
+    source_table: corecard_corp
+    collision_code: CARD
+    columns:
+      - target: dv_hkey_hub_corp
+        dtype: string
+        key_type: hash_key_hub
+        source:
+          - CO_CORPORATE_ID
+        
+      - target: CUS_CUSTOMER_CODE
+        dtype: int
+        key_type: biz_key
+        source:
+          dtype: int
+          name: CO_CORPORATE_ID

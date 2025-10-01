@@ -1,0 +1,54 @@
+collision_code: CRM
+columns:
+- dtype: string
+  key_type: hash_key_sat
+  source: 'null'
+  target: dv_hkey_sat_crm_indi
+
+- dtype: string
+  key_type: hash_key_hub
+  source:
+  - CRM_CUS_ID
+  target: dv_hkey_hub_indi
+
+- dtype: string
+  key_type: hash_diff
+  target: dv_hsh_dif
+
+- dtype: int
+  source:
+    dtype: int
+    name: CRM_CIF_NO
+  target: CRM_CIF_NO
+
+- dtype: string
+  source:
+    dtype: string
+    name: CRM_CUS_NAME
+  target: CRM_CUS_NAME
+
+- dtype: int
+  source:
+    dtype: int
+    name: CRM_CUSTOMER_IDNO
+  target: CRM_CUSTOMER_IDNO
+
+- dtype: date
+  source:
+    dtype: date
+    name: CRM_CREATION_DATE
+  target: CRM_CREATION_DATE
+
+- dtype: string
+  source:
+    dtype: string
+    name: BRN_CODE
+  target: BRN_CODE
+
+description: ''
+parent_table: hub_indi
+source_schema: source
+source_table: crm_customer
+target_entity_type: sat
+target_schema: integration_demo
+target_table: sat_crm_indi

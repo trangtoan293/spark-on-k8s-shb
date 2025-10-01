@@ -1,0 +1,7 @@
+SELECT * FROM
+(
+	SELECT t.*,
+	ROW_NUMBER() OVER (PARTITION BY KDI1 ORDER BY COB_DATE DESC) RN
+	FROM {{ref("dim_core_indi")}} t
+)
+WHERE RN = 1

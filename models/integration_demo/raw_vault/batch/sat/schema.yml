@@ -1,0 +1,176 @@
+version: 2
+
+models:
+    - name: sat_card_indi
+      description: '{{ doc("sat_card_indi") }}'
+      columns:
+        - name: dv_hkey_sat_card_indi
+          description: '{{ doc("dv_hkey_sat_card_indi") }}'
+          tests:
+            - unique
+            - not_null
+            - sat_w_source:
+                model_name: sat_card_indi
+        
+        - name: dv_hkey_hub_indi
+          description: '{{ doc("dv_hkey_hub_indi") }}'
+          tests:
+            - relationships:
+                to: ref('hub_indi')
+                field: dv_hkey_hub_indi
+
+    - name: sat_core_indi
+      description: '{{ doc("sat_core_indi") }}'
+      columns:
+        - name: dv_hkey_sat_core_indi
+          tests:
+            - unique
+            - not_null
+            - sat_w_source:
+                model_name: sat_core_indi
+        
+        - name: dv_hkey_hub_indi
+          description: '{{ doc("dv_hkey_hub_indi") }}' 
+          tests:
+            - relationships:
+                to: ref('hub_indi')
+                field: dv_hkey_hub_indi
+
+    - name: sat_crm_indi
+      description: '{{ doc("sat_crm_indi") }}'
+      columns:
+        - name: dv_hkey_sat_crm_indi
+          tests:
+            - unique
+            - not_null
+            - sat_w_source:
+                model_name: sat_crm_indi
+        
+        - name: dv_hkey_hub_indi
+          description: '{{ doc("dv_hkey_hub_indi") }}' 
+          tests:
+            - relationships:
+                to: ref('hub_indi')
+                field: dv_hkey_hub_indi            
+
+    - name: sat_snp_card_indi
+      description: '{{ doc("sat_snp_card_indi") }}'
+      columns:
+        - name: dv_hkey_sat_card_indi
+          description: '{{ doc("dv_hkey_sat_card_indi") }}'
+          tests:
+            - unique
+            - not_null
+            - sat_snp_w_source:
+                model_name: sat_card_indi
+        
+        - name: dv_hkey_hub_indi
+          description: '{{ doc("dv_hkey_hub_indi") }}'
+          tests:
+            - relationships:
+                to: ref('hub_indi')
+                field: dv_hkey_hub_indi
+
+    - name: sat_snp_core_indi
+      description: '{{ doc("sat_snp_core_indi") }}'
+      columns:
+        - name: dv_hkey_sat_core_indi
+          tests:
+            - unique
+            - not_null
+            - sat_snp_w_source:
+                model_name: sat_core_indi 
+        
+        - name: dv_hkey_hub_indi
+          description: '{{ doc("dv_hkey_hub_indi") }}' 
+          tests:
+            - relationships:
+                to: ref('hub_indi')
+                field: dv_hkey_hub_indi
+
+    - name: sat_snp_crm_indi
+      description: '{{ doc("sat_snp_crm_indi") }}'
+      columns:
+        - name: dv_hkey_sat_crm_indi
+          tests:
+            - unique
+            - not_null
+            - sat_snp_w_source:
+                model_name: sat_crm_indi 
+        
+        - name: dv_hkey_hub_indi
+          description: '{{ doc("dv_hkey_hub_indi") }}' 
+          tests:
+            - relationships:
+                to: ref('hub_indi')
+                field: dv_hkey_hub_indi            
+
+    - name: sat_card_corp
+      description: '{{ doc("sat_card_corp") }}'
+      columns:
+        - name: dv_hkey_sat_card_corp
+          description: '{{ doc("dv_hkey_sat_card_corp") }}'
+          tests:
+            - unique
+            - not_null
+            - sat_w_source:
+                model_name: sat_card_corp
+        
+        - name: dv_hkey_hub_corp
+          description: '{{ doc("dv_hkey_hub_corp") }}'
+          tests:
+            - relationships:
+                to: ref('hub_corp')
+                field: dv_hkey_hub_corp
+
+    - name: sat_core_corp
+      description: '{{ doc("sat_core_corp") }}'
+      columns:
+        - name: dv_hkey_sat_core_corp
+          tests:
+            - unique
+            - not_null
+            - sat_w_source:
+                model_name: sat_core_corp
+        
+        - name: dv_hkey_hub_corp
+          description: '{{ doc("dv_hkey_hub_corp") }}' 
+          tests:
+            - relationships:
+                to: ref('hub_corp')
+                field: dv_hkey_hub_corp
+
+    - name: sat_snp_card_corp
+      description: '{{ doc("sat_snp_card_corp") }}'
+      columns:
+        - name: dv_hkey_sat_card_corp
+          description: '{{ doc("dv_hkey_sat_card_corp") }}'
+          tests:
+            - unique
+            - not_null
+            - sat_snp_w_source:
+                model_name: sat_card_corp
+        
+        - name: dv_hkey_hub_corp
+          description: '{{ doc("dv_hkey_hub_corp") }}'
+          tests:
+            - relationships:
+                to: ref('hub_corp')
+                field: dv_hkey_hub_corp
+
+    - name: sat_snp_core_corp
+      description: '{{ doc("sat_snp_core_corp") }}'
+      columns:
+        - name: dv_hkey_sat_core_corp
+          tests:
+            - unique
+            - not_null
+            - sat_snp_w_source:
+                model_name: sat_core_corp 
+        
+        - name: dv_hkey_hub_corp
+          description: '{{ doc("dv_hkey_hub_corp") }}' 
+          tests:
+            - relationships:
+                to: ref('hub_corp')
+                field: dv_hkey_hub_corp

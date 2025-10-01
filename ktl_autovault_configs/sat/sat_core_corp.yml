@@ -1,0 +1,102 @@
+collision_code: CORE
+columns:
+- dtype: string
+  key_type: hash_key_sat
+  source: 'null'
+  target: dv_hkey_sat_core_corp
+
+- dtype: string
+  key_type: hash_key_hub
+  source:
+  - CUS_CUSTOMER_CODE
+  target: dv_hkey_hub_corp
+
+- dtype: string
+  key_type: hash_diff
+  target: dv_hsh_dif
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_NAME_1
+  target: CUS_NAME_1
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_ESTAB_CODE
+  target: CUS_ESTAB_CODE
+  
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_ESTAB_CODE_ISS_AUTH
+  target: CUS_ESTAB_CODE_ISS_AUTH
+
+- dtype: date
+  source: 
+    dtype: date
+    name: CUS_ESTAB_CODE_ISS_DATE
+  target: CUS_ESTAB_CODE_ISS_DATE
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_EMAIL_1
+  target: CUS_EMAIL_1
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_STREET
+  target: CUS_STREET
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_TAX_ID
+  target: CUS_TAX_ID
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_TAX_ID_ISS_AUTH
+  target: CUS_TAX_ID_ISS_AUTH
+  
+- dtype: date
+  source: 
+    dtype: date
+    name: CUS_TAX_ID_ISS_DATE
+  target: CUS_TAX_ID_ISS_DATE
+  
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_RESIDENCE
+  target: CUS_RESIDENCE
+
+- dtype: int
+  source: 
+    dtype: int
+    name: CB_MOBILE_NO
+  target: CB_MOBILE_NO
+
+- dtype: date
+  source: 
+    dtype: date
+    name: CUS_CREATION_DATE
+  target: CUS_CREATION_DATE
+
+- dtype: int
+  source: 
+    dtype: int
+    name: BRN_CODE
+  target: BRN_CODE
+
+description: ''
+parent_table: hub_corp
+source_schema: source
+source_table: corebank_corp
+target_entity_type: sat
+target_schema: integration_demo
+target_table: sat_core_corp

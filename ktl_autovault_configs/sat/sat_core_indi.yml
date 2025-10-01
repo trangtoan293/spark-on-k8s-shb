@@ -1,0 +1,120 @@
+collision_code: CORE
+columns:
+- dtype: string
+  key_type: hash_key_sat
+  source: 'null'
+  target: dv_hkey_sat_core_indi
+
+- dtype: string
+  key_type: hash_key_hub
+  source:
+  - CUS_CUSTOMER_CODE
+  target: dv_hkey_hub_indi
+
+- dtype: string
+  key_type: hash_diff
+  target: dv_hsh_dif
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_NAME_1
+  target: CUS_NAME_1
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_GENDER
+  target: CUS_GENDER
+  
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_BIRTH_INCORP_DATE
+  target: CUS_BIRTH_INCORP_DATE
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_NATIONALITY
+  target: CUS_NATIONALITY
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_STREET
+  target: CUS_STREET
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_ADDRESS
+  target: CUS_ADDRESS
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_MOBILE_NUMBER
+  target: CUS_MOBILE_NUMBER
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_EMAIL_1
+  target: CUS_EMAIL_1
+
+- dtype: string
+  source:
+    dtype: string
+    name: CUS_LEGAL_ID
+  target: CUS_LEGAL_ID
+
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_LEGAL_DOC_NAME
+  target: CUS_LEGAL_DOC_NAME
+  
+- dtype: date
+  source: 
+    dtype: date
+    name: CUS_LEGAL_ISS_DATE
+  target: CUS_LEGAL_ISS_DATE
+  
+- dtype: string
+  source: 
+    dtype: string
+    name: CUS_LEGAL_ISS_AUTH
+  target: CUS_LEGAL_ISS_AUTH
+
+- dtype: int
+  source: 
+    dtype: int
+    name: CUS_POSITION
+  target: CUS_POSITION
+
+- dtype: int
+  source: 
+    dtype: int
+    name: CUS_SECTOR
+  target: CUS_SECTOR
+
+- dtype: date
+  source: 
+    dtype: date
+    name: CUS_CREATION_DATE
+  target: CUS_CREATION_DATE
+
+- dtype: int
+  source: 
+    dtype: int
+    name: BRN_CODE
+  target: BRN_CODE
+
+description: ''
+parent_table: hub_indi
+source_schema: source
+source_table: corebank_customer
+target_entity_type: sat
+target_schema: integration_demo
+target_table: sat_core_indi

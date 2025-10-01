@@ -1,0 +1,79 @@
+collision_code: mdm
+target_schema: integration_demo
+target_entity_type: lsat
+target_table: lsat_card_indi
+description: ''
+source_schema: source
+source_table: corecard_customer
+columns:
+  - target: dv_hkey_lsat_card_indi
+    dtype: binary
+    key_type: hash_key_sat
+    source: 'null'
+
+  - target: dv_hkey_lnk_card_indi
+    dtype: binary
+    key_type: hash_key_lnk
+    source:
+      - CB_CIF_NO
+      - CB_CUSTOMER_IDNO
+
+  - target: dv_hsh_dif
+    dtype: binary
+    key_type: hash_diff
+
+  - dtype: string
+    source:
+      dtype: string
+      name: CB_SEX
+    target: CB_SEX
+
+  - dtype: string
+    source:
+      dtype: string
+      name: CB_DOB
+    target: CB_DOB
+
+  - dtype: string
+    source:
+      dtype: string
+      name: CB_NATIONALITY
+    target: CB_NATIONALITY
+
+  - dtype: string
+    source:
+      dtype: string
+      name: CB_MOBILE_NO
+    target: CB_MOBILE_NO
+
+  - dtype: string
+    source:
+      dtype: string
+      name: CB_EMAIL
+    target: CB_EMAIL
+
+  - dtype: string
+    source:
+      dtype: string
+      name: CB_USER2_DATE_1
+    target: CB_USER2_DATE_1
+
+  - dtype: string
+    source:
+      dtype: string
+      name: CB_OCCUPN
+    target: CB_OCCUPN
+
+  - dtype: string
+    source:
+      dtype: string
+      name: CB_CARDHOLDER_NAME
+    target: CB_CARDHOLDER_NAME
+
+  - dtype: string
+    source:
+      dtype: string
+      name: CB_ID_TYPE
+    target: CB_ID_TYPE
+
+parent_table: lnk_card_indi

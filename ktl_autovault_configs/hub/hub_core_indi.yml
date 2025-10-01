@@ -1,0 +1,21 @@
+collision_code: CORE
+columns:
+- dtype: string
+  key_type: hash_key_hub
+  source:
+  - CUS_CUSTOMER_CODE
+  target: dv_hkey_hub_indi
+  
+- dtype: int
+  key_type: biz_key
+  source:
+    dtype: int
+    name: CUS_CUSTOMER_CODE
+  target: CUS_CUSTOMER_CODE
+
+description: ''
+source_schema: source
+source_table: corebank_customer
+target_entity_type: hub
+target_schema: integration_demo
+target_table: hub_core_indi

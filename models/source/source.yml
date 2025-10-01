@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: source
+    schema: source
+    tables:
+      - name: corebank_customer
+      - name: corecard_customer
+      - name: ref_eod
+      - name: crm_customer
+      - name: corebank_corp
+      - name: corecard_corp

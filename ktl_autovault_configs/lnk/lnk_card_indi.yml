@@ -1,0 +1,29 @@
+collision_code: mdm
+columns:
+- dtype: string
+  key_type: hash_key_lnk
+  source:
+  - CB_CIF_NO
+  - CB_CUSTOMER_IDNO
+  target: dv_hkey_lnk_card_indi
+
+- dtype: string
+  key_type: hash_key_hub
+  parent: hub_card
+  source:
+  - CB_CIF_NO
+  target: dv_hkey_hub_card
+
+- dtype: string
+  key_type: hash_key_hub
+  parent: hub_indi
+  source:
+  - CB_CUSTOMER_IDNO
+  target: dv_hkey_hub_indi
+  
+description: ''
+source_schema: source
+source_table: corecard_customer
+target_entity_type: lnk
+target_schema: integration_demo
+target_table: lnk_card_indi

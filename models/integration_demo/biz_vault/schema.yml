@@ -1,0 +1,349 @@
+version: 2
+
+models:
+
+    - name: dim_core_indi
+      description: '{{ doc("dim_core_indi") }}'
+      columns:
+        - name: KDI1
+          description: '{{ doc("KDI1") }}'
+          
+        - name: KDI2
+          description: '{{ doc("KDI2") }}'
+          
+        - name: KDI3
+          description: '{{ doc("KDI3") }}'
+          
+        - name: KDI4
+          description: '{{ doc("KDI4") }}'
+          
+        - name: KDI5
+          description: '{{ doc("KDI5") }}'
+          
+        - name: KDI6
+          description: '{{ doc("KDI6") }}'
+          
+        - name: KDI7
+          description: '{{ doc("KDI7") }}'
+          
+        - name: KDI8
+          description: '{{ doc("KDI8") }}'
+          
+        - name: KDI9
+          description: '{{ doc("KDI9") }}'
+          
+        - name: KDI10
+          description: '{{ doc("KDI10") }}'
+          
+        - name: KDI10_01
+          description: '{{ doc("KDI10_01") }}'
+          
+        - name: KDI10_02
+          description: '{{ doc("KDI10_02") }}'
+          
+        - name: KDI10_03
+          description: '{{ doc("KDI10_03") }}'
+          
+        - name: KDI10_04
+          description: '{{ doc("KDI10_04") }}'
+          
+        - name: KDI10_05
+          description: '{{ doc("KDI10_05") }}'
+          
+        - name: KDI10_06
+          description: '{{ doc("KDI10_06") }}'
+          
+        - name: KDI11
+          description: '{{ doc("KDI11") }}'
+          
+        - name: KDI11_01
+          description: '{{ doc("KDI11_01") }}'
+          
+        - name: KDI11_02
+          description: '{{ doc("KDI11_02") }}'
+          
+        - name: KDI11_03
+          description: '{{ doc("KDI11_03") }}'
+          
+        - name: KDI11_04
+          description: '{{ doc("KDI11_04") }}'
+          
+        - name: KDI11_05
+          description: '{{ doc("KDI11_05") }}'
+          
+        - name: KDI11_06
+          description: '{{ doc("KDI11_06") }}'
+          
+        - name: KDI12
+          description: '{{ doc("KDI12") }}'
+          
+        - name: KDI12_01
+          description: '{{ doc("KDI12_01") }}'
+          
+        - name: KDI12_02
+          description: '{{ doc("KDI12_02") }}'
+          
+        - name: KDI12_03
+          description: '{{ doc("KDI12_03") }}'
+          
+        - name: KDI12_04
+          description: '{{ doc("KDI12_04") }}'
+          
+        - name: KDI12_05
+          description: '{{ doc("KDI12_05") }}'
+          
+        - name: KDI12_06
+          description: '{{ doc("KDI12_06") }}'
+          
+        - name: KDI13
+          description: '{{ doc("KDI13") }}'
+          
+        - name: KDI13_01
+          description: '{{ doc("KDI13_01") }}'
+          
+        - name: KDI13_02
+          description: '{{ doc("KDI13_02") }}'
+          
+        - name: KDI13_03
+          description: '{{ doc("KDI13_03") }}'
+          
+        - name: KDI13_04
+          description: '{{ doc("KDI13_04") }}'
+          
+        - name: KDI13_05
+          description: '{{ doc("KDI13_05") }}'
+          
+        - name: KDI13_06
+          description: '{{ doc("KDI13_06") }}'
+          
+        - name: KDI14
+          description: '{{ doc("KDI14") }}'
+          
+        - name: KDI14_01
+          description: '{{ doc("KDI14_01") }}'
+          
+        - name: KDI14_02
+          description: '{{ doc("KDI14_02") }}'
+          
+        - name: KDI14_03
+          description: '{{ doc("KDI14_03") }}'
+          
+        - name: KDI14_04
+          description: '{{ doc("KDI14_04") }}'
+          
+        - name: KDI14_05
+          description: '{{ doc("KDI14_05") }}'
+          
+        - name: KDI14_06
+          description: '{{ doc("KDI14_06") }}'
+          
+        - name: KDI15
+          description: '{{ doc("KDI15") }}'
+          
+        - name: KDI16
+          description: '{{ doc("KDI16") }}'
+          
+        - name: KDI17
+          description: '{{ doc("KDI17") }}'
+          
+        - name: KDI18
+          description: '{{ doc("KDI18") }}'
+          
+        - name: KDI19
+          description: '{{ doc("KDI19") }}'
+          
+        - name: KDI20
+          description: '{{ doc("KDI20") }}'
+          
+        - name: KDI21_01
+          description: '{{ doc("KDI21_01") }}'
+          
+        - name: KDI21_02
+          description: '{{ doc("KDI21_02") }}'
+          
+        - name: KDI21_03
+          description: '{{ doc("KDI21_03") }}'
+          
+        - name: KDI22_01
+          description: '{{ doc("KDI22_01") }}'
+          
+        - name: KDI22_02
+          description: '{{ doc("KDI22_02") }}'
+          
+        - name: KDI22_03
+          description: '{{ doc("KDI22_03") }}'
+          
+        - name: KDI23_01
+          description: '{{ doc("KDI23_01") }}'
+          
+        - name: KDI23_02
+          description: '{{ doc("KDI23_02") }}'
+          
+        - name: KDI23_03
+          description: '{{ doc("KDI23_03") }}'
+          
+        - name: KDI23_04
+          description: '{{ doc("KDI23_04") }}'
+          
+        - name: KDI24_01
+          description: '{{ doc("KDI24_01") }}'
+          
+        - name: KDI24_02
+          description: '{{ doc("KDI24_02") }}'
+          
+        - name: KDI24_03
+          description: '{{ doc("KDI24_03") }}'
+          
+        - name: KDI25_01
+          description: '{{ doc("KDI25_01") }}'
+          
+        - name: KDI25_02
+          description: '{{ doc("KDI25_02") }}'
+          
+        - name: KDI25_03
+          description: '{{ doc("KDI25_03") }}'
+          
+        - name: KDI26_01
+          description: '{{ doc("KDI26_01") }}'
+          
+        - name: KDI26_02
+          description: '{{ doc("KDI26_02") }}'
+          
+        - name: KDI26_03
+          description: '{{ doc("KDI26_03") }}'
+          
+        - name: KDI27_01
+          description: '{{ doc("KDI27_01") }}'
+          
+        - name: KDI27_02
+          description: '{{ doc("KDI27_02") }}'
+          
+        - name: KDI27_03
+          description: '{{ doc("KDI27_03") }}'
+          
+        - name: KDI28_01
+          description: '{{ doc("KDI28_01") }}'
+          
+        - name: KDI28_02
+          description: '{{ doc("KDI28_02") }}'
+          
+        - name: KDI28_03
+          description: '{{ doc("KDI28_03") }}'
+          
+        - name: KDI29_01
+          description: '{{ doc("KDI29_01") }}'
+          
+        - name: KDI29_02
+          description: '{{ doc("KDI29_02") }}'
+          
+        - name: KDI29_03
+          description: '{{ doc("KDI29_03") }}'
+          
+        - name: KDI30_01
+          description: '{{ doc("KDI30_01") }}'
+          
+        - name: KDI30_02
+          description: '{{ doc("KDI30_02") }}'
+          
+        - name: KDI30_03
+          description: '{{ doc("KDI30_03") }}'
+          
+        - name: KDI30_04
+          description: '{{ doc("KDI30_04") }}'
+          
+        - name: KDI31
+          description: '{{ doc("KDI31") }}'
+          
+        - name: KDI32
+          description: '{{ doc("KDI32") }}'
+          
+        - name: KDI33_01
+          description: '{{ doc("KDI33_01") }}'
+          
+        - name: KDI33_02
+          description: '{{ doc("KDI33_02") }}'
+          
+        - name: KDI33_03
+          description: '{{ doc("KDI33_03") }}'
+          
+        - name: KDI33_04
+          description: '{{ doc("KDI33_04") }}'
+          
+        - name: KDI34_01
+          description: '{{ doc("KDI34_01") }}'
+          
+        - name: KDI34_02
+          description: '{{ doc("KDI34_02") }}'
+          
+        - name: KDI34_03
+          description: '{{ doc("KDI34_03") }}'
+          
+        - name: KDI34_04
+          description: '{{ doc("KDI34_04") }}'
+          
+        - name: KDI34_05
+          description: '{{ doc("KDI34_05") }}'
+          
+        - name: KDI35
+          description: '{{ doc("KDI35") }}'
+          
+        - name: KDI36
+          description: '{{ doc("KDI36") }}'
+          
+        - name: KDI37
+          description: '{{ doc("KDI37") }}'
+          
+        - name: KDI38
+          description: '{{ doc("KDI38") }}'
+          
+        - name: KDI39
+          description: '{{ doc("KDI39") }}'
+          
+        - name: KDI40
+          description: '{{ doc("KDI40") }}'
+          
+        - name: KDI41
+          description: '{{ doc("KDI41") }}'
+          
+        - name: KDI42
+          description: '{{ doc("KDI42") }}'
+          
+        - name: KDI43
+          description: '{{ doc("KDI43") }}'
+          
+        - name: KDI44
+          description: '{{ doc("KDI44") }}'
+          
+        - name: KDI45
+          description: '{{ doc("KDI45") }}'
+          
+        - name: KDI46
+          description: '{{ doc("KDI46") }}'
+          
+        - name: KDI47
+          description: '{{ doc("KDI47") }}'
+          
+        - name: KDI48
+          description: '{{ doc("KDI48") }}'
+          
+        - name: KDI49
+          description: '{{ doc("KDI49") }}'
+          
+        - name: KDI50
+          description: '{{ doc("KDI50") }}'
+          
+        - name: KDI51
+          description: '{{ doc("KDI51") }}'
+          
+        - name: KDI52
+          description: '{{ doc("KDI52") }}'
+          
+        - name: KDI53
+          description: '{{ doc("KDI53") }}'
+          
+        - name: KDI54
+          description: '{{ doc("KDI54") }}'
+          
+        - name: KDI55
+          description: '{{ doc("KDI55") }}'
+
