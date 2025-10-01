@@ -13,8 +13,11 @@ Compilation Error in model KTLMDM_CRM_INDIVIDUAL_CLEANSING
 
 ## Root Cause Analysis [REH, IV]
 
-### Primary Issue
-The error `'None' has no attribute 'get'` occurred because the macro `cleansing_registry_rule_replace_to_head_phone` attempted to call `.get()` on a `None` value without first validating that `rule_info` was not `None`.
+### Primary Issue (Updated)
+The error `'None' has no attribute 'get'` has **TWO root causes**:
+
+1. **Missing Catalog Configuration** (Critical) - The variable `catalog_table` is not defined in `dbt_project.yml`
+2. **Missing Null Validation** - Macros attempted to call `.get()` on `None` values without validation
 
 ### Code Flow
 1. `KTLMDM_CRM_INDIVIDUAL_CLEANSING.sql` calls `cleansing_handle()`
@@ -62,6 +65,15 @@ Improved safe attribute access:
 - Prevents KeyError if rule configuration is missing expected attributes
 - More defensive programming approach
 
+### 4. `/macros/mdm/main/utils/ktl_mdm_utils_get_config.sql`
+Added comprehensive validation for catalog configuration:
+
+#### Changes Made (lines 26-44):
+- Added null check for `var(name_type)` to detect missing configuration
+- Added null check for `ref_group` within catalog configuration
+- Improved error messages to show available catalog groups
+- Provides clear guidance on what configuration is missing
+
 ## Benefits of These Changes [REH, IV, CA]
 
 1. **Better Error Messages**: Instead of cryptic `'None' has no attribute 'get'`, users now see:
@@ -90,13 +102,44 @@ The following rules are configured for CRM INDIVIDUAL cleansing:
 
 All required attributes are present in the configuration files.
 
-## Next Steps
+## Next Steps - CRITICAL CONFIGURATION REQUIRED
 
-1. Run `dbt run --select KTLMDM_CRM_INDIVIDUAL_CLEANSING` to test the fix
-2. If errors persist, check:
-   - Catalog tables exist: `integration_demo.MDM_PHONE_NUMBER_PREFIX`, `integration_demo.mdm_catalog_category`
-   - Column mappings are correct in metadata configuration
-   - Source view `VW_KTLMDM_CRM_INDIVIDUAL_INGEST` exists and is accessible
+### 1. Add Catalog Configuration to `dbt_project.yml`
+**This is required before running dbt again!**
+
+See `CATALOG_CONFIG_REQUIRED.md` for detailed instructions.
+
+Add this to your `dbt_project.yml`:
+```yaml
+vars:
+  catalog_table:
+    ref_group:
+      - name: mdm_phone_number_prefix
+        table: integration_demo.MDM_PHONE_NUMBER_PREFIX
+        column_old_phone: old_phone
+        column_new_phone: new_phone
+      
+      - name: mdm_catalog_category
+        table: integration_demo.mdm_catalog_category
+        column_original_value: original_value
+        column_standard_value: standard_value
+        column_category_type: category_type
+        column_source: source
+```
+
+### 2. Verify Catalog Tables Exist
+- `integration_demo.MDM_PHONE_NUMBER_PREFIX`
+- `integration_demo.mdm_catalog_category`
+
+### 3. Run dbt
+```bash
+dbt run --select KTLMDM_CRM_INDIVIDUAL_CLEANSING
+```
+
+### 4. If Errors Persist
+- Verify column names match your actual catalog table schemas
+- Check source view `VW_KTLMDM_CRM_INDIVIDUAL_INGEST` exists
+- Review error messages for specific missing configurations
 
 ## Applied Rules
 [REH] - Robust Error Handling
