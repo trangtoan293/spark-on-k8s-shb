@@ -23,13 +23,25 @@
 
 {# get info table catalog #}
 {%- macro ktl_mdm_get_info_table_catalog(group_name, name_type ='catalog_table') -%}
-    {% for group in var(name_type).get('ref_group') %}
+    {%- set catalog_config = var(name_type, none) -%}
+    
+    {%- if catalog_config is none -%}
+        {{ exceptions.raise_compiler_error("MDMError: Variable '" ~ name_type ~ "' is not defined in dbt_project.yml. Please add catalog configuration under 'vars:' section.") }}
+    {%- endif -%}
+    
+    {%- set ref_group = catalog_config.get('ref_group', none) -%}
+    
+    {%- if ref_group is none -%}
+        {{ exceptions.raise_compiler_error("MDMError: 'ref_group' not found in variable '" ~ name_type ~ "'. Please check your catalog configuration.") }}
+    {%- endif -%}
+    
+    {% for group in ref_group %}
         {% if group.name == group_name %}
            {{ return(group) }}
         {% endif %}
     {% endfor %}
     
-    {{exceptions.raise_compiler_error("MDMError:  Not found in Group '" ~ p_group_name ~"'")}}
+    {{exceptions.raise_compiler_error("MDMError: Catalog group '" ~ group_name ~ "' not found in '" ~ name_type ~ ".ref_group'. Available groups: " ~ ref_group | map(attribute='name') | list | join(', '))}}
 
 {% endmacro %}
 
