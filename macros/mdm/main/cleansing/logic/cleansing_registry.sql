@@ -1,5 +1,9 @@
 {# cleansing rule remove character  #}
 {%- macro cleansing_registry_rule_regex_pattern(table_name, lst_column_metadata, lst_column_apply, rule_info) -%}
+    {%- if rule_info is none -%}
+        {{ exceptions.raise_compiler_error("MDMError: rule_info is None in cleansing_registry_rule_regex_pattern") }}
+    {%- endif -%}
+
     {%- set gen_logic= [] -%}
 
     {%- for col_name in lst_column_apply -%}
@@ -19,6 +23,10 @@
 
 {# cleansing rule remove character +84 , 84 -> 0 and replace to head_phone  #}
 {%- macro cleansing_registry_rule_replace_to_head_phone(table_name, lst_column_metadata, lst_column_apply, rule_info, catalog_name = 'mdm_phone_number_prefix') -%}
+    {%- if rule_info is none -%}
+        {{ exceptions.raise_compiler_error("MDMError: rule_info is None in cleansing_registry_rule_replace_to_head_phone") }}
+    {%- endif -%}
+
     {%- set catalog_table = ktl_mdm_get_info_table_catalog(group_name=catalog_name) -%}
 
     {%- set _catalog  =  rule_info.get('catalog_condition') -%}
@@ -64,6 +72,10 @@
 
 {# cleansing rule coalesce catalog column #}
 {%- macro cleansing_registry_rule_coalesce_catalog(table_name, lst_column_metadata, lst_column_apply, rule_info, source, catalog_name = 'mdm_catalog_category') -%}
+    {%- if rule_info is none -%}
+        {{ exceptions.raise_compiler_error("MDMError: rule_info is None in cleansing_registry_rule_coalesce_catalog") }}
+    {%- endif -%}
+
     {%- set catalog_table = ktl_mdm_get_info_table_catalog(group_name=catalog_name) -%}
 
     {%- set _catalog_condition = rule_info.get('catalog_condition') -%}
@@ -104,7 +116,10 @@
 
 {# cleansing rule convert string to date with format #}
 {%- macro cleansing_resigtry_rule_convert_str_to_data(table_name, lst_column_metadata, lst_column_apply, rule_info, source) -%}
-    
+    {%- if rule_info is none -%}
+        {{ exceptions.raise_compiler_error("MDMError: rule_info is None in cleansing_resigtry_rule_convert_str_to_data") }}
+    {%- endif -%}
+
     {%- set gen_logic = [] -%}
     
     {%- for col_name in lst_column_apply -%}

@@ -9,6 +9,10 @@
 
         {%- set info_rule_cleansing = selected_info_rule_cleansing(rule_code= item.get('name'))-%}
 
+        {%- if info_rule_cleansing is none -%}
+            {{ exceptions.raise_compiler_error("MDMError: Rule '" ~ item.get('name') ~ "' not found in rule configuration. Please check your rule_desc_config.yml") }}
+        {%- endif -%}
+
         {%- set lst_col_not_rule = reject_column(lst_column_model, item.get('list_column')) -%}
 
         {%- set lst_col_vailable = ktl_mdm_get_column_available(lst_column_model, item.get('list_column')) -%}
