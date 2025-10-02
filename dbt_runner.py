@@ -10,13 +10,19 @@ from pathlib import Path
 from pyspark.sql import SparkSession
 import subprocess
 import logging
+import argparse
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def install_dbt_dependencies():
-    """Install dbt project dependencies if packages.yml exists"""
+def install_dbt_dependencies(use_subprocess=False, dbt_command="dbt"):
+    """Install dbt project dependencies if packages.yml exists
+    
+    Args:
+        use_subprocess: If True, use subprocess to run dbt deps command
+        dbt_command: Command to use (default: 'dbt', can be 'ktl-dbt')
+    """
     
     packages_file = Path("packages.yml")
     if not packages_file.exists():
@@ -26,28 +32,102 @@ def install_dbt_dependencies():
     logger.info("📦 Found packages.yml, installing dbt dependencies...")
     
     try:
-        from dbt.cli.main import dbtRunner
-        dbt = dbtRunner()
-        
-        # Run dbt deps command
-        logger.info("🔄 Running dbt deps command")
-        result = dbt.invoke(['deps'])
-        
-        if result.success:
-            logger.info("✅ dbt dependencies installed successfully")
-            return True
+        if use_subprocess:
+            # Run dbt deps using subprocess
+            logger.info(f"🔄 Running {dbt_command} deps command via subprocess")
+            cmd = [dbt_command, 'deps']
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                logger.info("✅ dbt dependencies installed successfully")
+                if result.stdout:
+                    logger.info(f"Output: {result.stdout}")
+                return True
+            else:
+                logger.error("❌ dbt deps command failed")
+                if result.stderr:
+                    logger.error(f"Error: {result.stderr}")
+                return False
         else:
-            logger.error("❌ dbt deps command failed")
-            if result.exception:
-                logger.error(f"Exception: {result.exception}")
-            return False
+            # Use dbtRunner (original method)
+            from dbt.cli.main import dbtRunner
+            dbt = dbtRunner()
+            
+            # Run dbt deps command
+            logger.info("🔄 Running dbt deps command")
+            result = dbt.invoke(['deps'])
+            
+            if result.success:
+                logger.info("✅ dbt dependencies installed successfully")
+                return True
+            else:
+                logger.error("❌ dbt deps command failed")
+                if result.exception:
+                    logger.error(f"Exception: {result.exception}")
+                return False
             
     except Exception as e:
         logger.error(f"❌ Error installing dbt dependencies: {str(e)}")
         return False
 
+def run_dbt_subprocess(dbt_command, dbt_args):
+    """Run dbt command using subprocess
+    
+    Args:
+        dbt_command: Command to use ('dbt' or 'ktl-dbt')
+        dbt_args: List of arguments to pass to dbt command
+    
+    Returns:
+        bool: True if command succeeded, False otherwise
+    """
+    try:
+        cmd = [dbt_command] + dbt_args
+        logger.info(f"🚀 Running command via subprocess: {' '.join(cmd)}")
+        
+        # Run command with real-time output
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
+        
+        # Print output in real-time
+        for line in process.stdout:
+            print(line, end='')
+        
+        # Wait for process to complete
+        return_code = process.wait()
+        
+        if return_code == 0:
+            logger.info("✅ dbt command completed successfully")
+            return True
+        else:
+            logger.error(f"❌ dbt command failed with return code: {return_code}")
+            return False
+            
+    except FileNotFoundError:
+        logger.error(f"❌ Command not found: {dbt_command}")
+        logger.error(f"Make sure {dbt_command} is installed and available in PATH")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Error running dbt command: {str(e)}")
+        return False
+
 def main():
     """Main entry point for external dbt runner"""
+    
+    # Parse arguments
+    parser = argparse.ArgumentParser(description='dbt Runner with subprocess support')
+    parser.add_argument('--use-subprocess', action='store_true', 
+                        help='Use subprocess to run dbt command instead of dbtRunner')
+    parser.add_argument('--dbt-command', default='dbt', 
+                        help='dbt command to use (default: dbt, can use ktl-dbt)')
+    
+    # Parse known args to separate our flags from dbt args
+    args, remaining_args = parser.parse_known_args()
     
     # Set up paths
     dbt_project_dir = "/opt/spark/work-dir/dbt-project"
@@ -71,11 +151,11 @@ def main():
     os.makedirs("/tmp/dbt_logs", exist_ok=True)
     logger.info("Created writable temp directories for dbt target and logs")
     
-    # Get dbt command arguments from Spark args
+    # Get dbt command arguments
     dbt_args = []
     skip_next = False
     
-    for arg in sys.argv[1:]:
+    for arg in remaining_args:
         if skip_next:
             skip_next = False
             continue
@@ -94,6 +174,9 @@ def main():
         dbt_args = ['run', '--target', 'dev']
     
     logger.info(f"🚀 Starting dbt with args: {dbt_args}")
+    logger.info(f"📋 Execution mode: {'subprocess' if args.use_subprocess else 'dbtRunner'}")
+    if args.use_subprocess:
+        logger.info(f"📋 Using command: {args.dbt_command}")
     
     # Initialize Spark Session (reuse existing context if available)
     try:
@@ -116,28 +199,38 @@ def main():
                 sys.exit(1)
         
         # Install dbt dependencies first
-        if not install_dbt_dependencies():
+        if not install_dbt_dependencies(
+            use_subprocess=args.use_subprocess, 
+            dbt_command=args.dbt_command
+        ):
             logger.error("Failed to install dbt dependencies")
             sys.exit(1)
         
-        from dbt.cli.main import dbtRunner,dbtRunnerResult
-        dbt = dbtRunner()
-        
-        # Run command
-        logger.info(f"🚀 Running dbt command: {' '.join(dbt_args)}")
-
-        res: dbtRunnerResult = dbt.invoke(dbt_args)
-        # inspect the results
-        for r in res.result:
-            logger.info(f"{r.node.name}: {r.status}")
-        if res.success:
-            logger.info("✅ dbt command completed successfully")
-            return True
+        # Run dbt command based on execution mode
+        if args.use_subprocess:
+            # Use subprocess method
+            success = run_dbt_subprocess(args.dbt_command, dbt_args)
+            if not success:
+                sys.exit(1)
         else:
-            logger.error("❌ dbt command failed")
-            if res.exception:
-                logger.error(f"Exception: {res.exception}")
-            return False
+            # Use dbtRunner method (original)
+            from dbt.cli.main import dbtRunner, dbtRunnerResult
+            dbt = dbtRunner()
+            
+            # Run command
+            logger.info(f"🚀 Running dbt command: {' '.join(dbt_args)}")
+
+            res: dbtRunnerResult = dbt.invoke(dbt_args)
+            # inspect the results
+            for r in res.result:
+                logger.info(f"{r.node.name}: {r.status}")
+            if res.success:
+                logger.info("✅ dbt command completed successfully")
+            else:
+                logger.error("❌ dbt command failed")
+                if res.exception:
+                    logger.error(f"Exception: {res.exception}")
+                sys.exit(1)
             
     except Exception as e:
         logger.error(f"❌ Error running dbt: {str(e)}")

@@ -102,16 +102,6 @@ models:
         "read.parquet.vectorization.enabled": "true"
         "read.parquet.vectorization.batch-size": "10000"
 
-      raw_vault:
-        stream:
-          +materialized: streaming
-          +submission_method: spark_session
-          +streaming_checkpoint_path: "s3a://data/tmp/checkpoint/dbt_project_demo"
-        batch:
-          +materialized: incremental
-          # +submission_method: spark_session
-          # +streaming_checkpoint_path: "s3a://data/tmp/checkpoint/dbt_project_demo"
-
       biz_vault:
           +materialized: table
 
@@ -123,24 +113,7 @@ models:
         "read.parquet.vectorization.enabled": "true"
         "read.parquet.vectorization.batch-size": "10000"
 
-  dbt_artifacts:
-    +file_format: iceberg
-
 seeds:
   ktl_dbt:
     +schema: source
     +file_format: iceberg
-
-# on-run-end:
-#   - "{{ dbt_artifacts.upload_results(results) }}"
-
-
-models:
-  simple_dbt_project:
-    staging:
-      +materialized: view
-      +file_format: iceberg
-    marts:
-      +materialized: table
-      +file_format: iceberg
-      
