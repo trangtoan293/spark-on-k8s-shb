@@ -33,20 +33,17 @@ def install_dbt_dependencies(use_subprocess=False, dbt_command="dbt"):
     
     try:
         if use_subprocess:
-            # Run dbt deps using subprocess
-            logger.info(f"🔄 Running {dbt_command} deps command via subprocess")
-            cmd = [dbt_command, 'deps']
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            from dbt.cli.main import dbtRunner
+            dbt = dbtRunner()
+            result = dbt.invoke(['deps'])
             
-            if result.returncode == 0:
+            if result.success:
                 logger.info("✅ dbt dependencies installed successfully")
-                if result.stdout:
-                    logger.info(f"Output: {result.stdout}")
                 return True
             else:
                 logger.error("❌ dbt deps command failed")
-                if result.stderr:
-                    logger.error(f"Error: {result.stderr}")
+                if result.exception:
+                    logger.error(f"Exception: {result.exception}")
                 return False
         else:
             # Use dbtRunner (original method)
