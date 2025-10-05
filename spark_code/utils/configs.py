@@ -89,12 +89,15 @@ class OracleConfig:
     @property
     def jdbc_url(self) -> str:
         """Build JDBC URL."""
-        return f"jdbc:oracle:thin:{self.username}/{self.password}@//{self.host}:{self.port}/{self.service}"
+        # Do NOT embed credentials in the URL to avoid issues with special characters (e.g., '@').
+        # Credentials are passed separately via Spark options (user/password).
+        return f"jdbc:oracle:thin:@//{self.host}:{self.port}/{self.service}"
     
     @property
     def safe_url(self) -> str:
         """JDBC URL with masked credentials."""
-        return f"jdbc:oracle:thin:***:***@//{self.host}:{self.port}/{self.service}"
+        # No credentials embedded; show sanitized URL
+        return f"jdbc:oracle:thin:@//{self.host}:{self.port}/{self.service}"
 
 
 def oracle_config() -> OracleConfig:
