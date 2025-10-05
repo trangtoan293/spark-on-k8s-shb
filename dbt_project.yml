@@ -80,7 +80,7 @@ vars:
 models:
   ktl_dbt:
     # Config indicated by + and applies to all files under models/example/
-    integration_demo:
+    integration:
       +materialized: incremental
       +file_format: iceberg
       +tblproperties:

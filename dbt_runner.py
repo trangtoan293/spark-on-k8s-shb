@@ -21,7 +21,7 @@ def install_dbt_dependencies(use_subprocess=False, dbt_command="dbt"):
     
     Args:
         use_subprocess: If True, use subprocess to run dbt deps command
-        dbt_command: Command to use (default: 'dbt', can be 'ktl-dbt')
+        dbt_command: Command to use (default: 'dbt', can be 'ktl_dbt')
     """
     
     packages_file = Path("packages.yml")
@@ -71,7 +71,7 @@ def run_dbt_subprocess(dbt_command, dbt_args):
     """Run dbt command using subprocess
     
     Args:
-        dbt_command: Command to use ('dbt' or 'ktl-dbt')
+        dbt_command: Command to use ('dbt' or 'ktl_dbt')
         dbt_args: List of arguments to pass to dbt command
     
     Returns:
@@ -121,7 +121,7 @@ def main():
     parser.add_argument('--use-subprocess', action='store_true', 
                         help='Use subprocess to run dbt command instead of dbtRunner')
     parser.add_argument('--dbt-command', default='dbt', 
-                        help='dbt command to use (default: dbt, can use ktl-dbt)')
+                        help='dbt command to use (default: dbt, can use ktl_dbt)')
     
     # Parse known args to separate our flags from dbt args
     args, remaining_args = parser.parse_known_args()
