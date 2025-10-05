@@ -1,145 +1,255 @@
-{# 
-==============================================
-Hub Transformation Macro - REFACTORED
-==============================================
-Generates Data Vault Hub tables from YAML configuration.
-Batch/incremental processing only (no streaming).
-#}
+{% macro hub_transform(model, dv_system, from_ref_model=false, include_ghost_record=true) -%}
 
-{%- macro hub_transform(model, dv_system) -%}
-    {#
-    **Hub Transformation - Batch Processing**
-    
-    Generates a Data Vault Hub table with:
-        - SHA-256 hash keys from business keys
-        - Business key columns
-        - System columns (timestamps, CDC operations)
-        - Collision code for source identification
-    
-    **Data Vault Logic:**
-        1. Extract source data with all required columns
-        2. Filter out records with null business keys
-        3. Deduplicate by hash key (keep earliest record)
-        4. Output unique Hub records
-    
-    **Args:**
-        model (dict): Hub configuration from YAML file
-            Required fields:
-                - target_schema: Target schema name
-                - target_table: Target table name
-                - target_entity_type: Must be 'hub'
-                - collision_code: Source system identifier (e.g. 'CORE', 'CARD')
-                - source_schema: Source schema (default: 'source')
-                - source_table: Source table name
-                - columns: List of column configurations
-                    Each column needs:
-                        - key_type: 'hash_key_hub' or 'biz_key'
-                        - source: Column name or list of names
-                        - target: Target column name
-                        - dtype: Data type
-        
-        dv_system (dict): System column configuration from dbt_project.yml
-            Contains definitions for:
-                - dv_kaf_ldt: Kafka load datetime
-                - dv_src_ldt: Source load datetime
-                - dv_cdc_ops: CDC operation type
-                - dv_ccd: Collision code
-    
-    **Returns:**
-        SQL query for Hub table creation with incremental materialization
-    
-    **YAML Config Example:**
-        ```yaml
-        target_schema: raw_vault
-        target_table: hub_customer
-        target_entity_type: hub
-        collision_code: CORE
-        source_schema: source
-        source_table: corebank_customer
-        columns:
-          - key_type: hash_key_hub
-            source: [CUSTOMER_ID]  # List for composite keys
-            target: dv_hkey_hub_customer
-            dtype: string
-          - key_type: biz_key
-            source:
-              name: CUSTOMER_ID
-              dtype: int
-            target: CUSTOMER_ID
-            dtype: int
-        ```
-    
-    **Usage:**
-        ```sql
-        -- models/raw_vault/hub_customer.sql
-        {{ hub_transform(
-            model=fromyaml(var('hub_customer_config')),
-            dv_system=var('dv_system')
-        ) }}
-        ```
-    
-    **Important Notes:**
-        - Hash generation logic MUST NOT be modified (affects existing data)
-        - Deduplication keeps EARLIEST record per hash key
-        - Business keys cannot be null
-        - Incremental loads append new hash keys only
-    #}
-    
-    {# Validate configuration before processing #}
-    {{ validate_hub_config(model) }}
-    
-    {# Configure as incremental table (batch processing) #}
-    {{ config(materialized='incremental', unique_key=get_hash_key_column(model, 'hash_key_hub').get('target')) }}
-    
-    {# Extract metadata for processing #}
-    {%- set hash_col = get_hash_key_column(model, 'hash_key_hub') -%}
-    {%- set hash_key_name = hash_col.get('target') -%}
-    {%- set ldt_columns = get_ldt_column_names(dv_system) -%}
-    
-    {# 
-    ========================================
-    CTE 1: Source Data Extraction
-    ========================================
-    Extract all required columns from source:
-        - Generate hash key from business keys
-        - Cast business keys to target types
-        - Include system columns (timestamps, CDC)
-        - Add collision code
-        - Filter out null business keys
-    #}
-    WITH source_data AS (
-        SELECT
-            {{ build_hub_source_select(model, dv_system) }}
-        FROM {{ get_source_reference(model) }}
-        {{ build_hub_source_where(model) }}
-    ),
-    
-    {# 
-    ========================================
-    CTE 2: Deduplication
-    ========================================
-    Keep only the earliest record per hash key.
-    Data Vault rule: First appearance wins.
-    Uses window function with load timestamps for ordering.
-    #}
-    deduplicated AS (
-        SELECT *
-        FROM (
-            SELECT
-                *,
-                {{ build_hub_dedup_window(hash_key_name, ldt_columns) }}
-            FROM source_data
-        )
-        WHERE row_num = 1
+    {#-
+        This macro is used to transform multiple source tables into a hub table.
+        Multiple source tables can be defined in the model configuration by using the 'sources' key.
+        The macro will iterate through each source table and apply hub_transform_single macro, then combine the logic using union all.
+        If the model configuration does not include the 'sources' key, it will treat the model as hub_transform_single.
+
+        Arguments:
+            model (dict): The model configuration, including target, source, and business key definitions.
+            dv_system (dict): The system columns configuration, can be defined as project variables in the dbt_project.yml file.
+            from_ref_model (bool, optional): Indicates if the source tables are dbt ref models (true) or source models (false). Defaults is false.
+            include_ghost_record (bool, optional): Indicates if ghost records should be included in initial load. Defaults to true.
+
+        Example:
+            {%- set model_yml -%}
+
+            target_schema: integration
+            target_table: hub_customer
+            target_entity_type: hub
+            sources:
+              - source_schema: source
+                source_table: corebank_customer
+                collision_code: CORE
+                columns:
+                  - target: dv_hkey_hub_customer
+                    dtype: string
+                    key_type: hash_key_hub
+                    source:
+                      - CUS_CUSTOMER_CODE
+
+                  - target: CUS_CUSTOMER_CODE
+                    dtype: int
+                    key_type: biz_key
+                    source:
+                      dtype: int
+                      name: CUS_CUSTOMER_CODE
+
+              - source_schema: source
+                source_table: crm_customer
+                collision_code: CRM
+                columns:
+                  - target: dv_hkey_hub_customer
+                    dtype: string
+                    key_type: hash_key_hub
+                    source:
+                      - CRM_CUS_ID
+
+                  - target: CUS_CUSTOMER_CODE
+                    dtype: int
+                    key_type: biz_key
+                    source:
+                      dtype: int
+                      name: CRM_CUS_ID
+
+            {%- endset -%}
+
+            {%- set hub_model = fromyaml(model_yml) -%}
+            {%- set dv_system = var("dv_system") -%}
+            {{ ktl_autovault.hub_transform(model=hub_model, dv_system=dv_system) }}
+    -#}
+
+    {%- set sources = model.get('sources', [model]) -%}
+
+    {%- if (sources | length) > 1 -%}
+
+    {#-
+        If the model configuration includes multiple sources, iterate through each source and apply hub_transform_single macro.
+    -#}
+
+    {%- set from_ref_model = from_ref_model or sources[0].get('from_ref_model', false) -%}
+
+    {%- if ktl_autovault.is_streaming() -%}
+        {%- do model.update(sources[0]) -%}
+        {{ ktl_autovault.hub_transform_single(model, dv_system, from_ref_model) }}
+    {%- endif -%}
+
+    {%- do model.update(sources[0]) -%}
+    {%- for source in sources -%}
+
+        {%- do model.update(source) -%}
+
+    select * from (
+        {{ ktl_autovault.hub_transform_single(model, dv_system, from_ref_model) }}
     )
-    
-    {# 
-    ========================================
-    Final Output
-    ========================================
-    Select all Hub columns.
-    For incremental runs, dbt automatically handles new records.
-    #}
-    {{ build_hub_final_select(model, dv_system) }}
 
-{%- endmacro -%}
+    {#
+        The logic will be combined using union all.
+        If the materialization is streaming, it will not use ; instead to separate the queries.
+    -#}
+
+    {% if not loop.last -%}
+        {%- if config.get('materialized') == "streaming" -%} ;
+        {%- else -%} union all
+        {%- endif %}
+
+    {% endif -%}
+
+    {%- endfor -%}
+
+    {%- else -%}
+
+        {%- do model.update(sources[0]) -%}
+        {{ ktl_autovault.hub_transform_single(model, dv_system, from_ref_model) }}
+
+    {% endif -%}
+
+    {%- if not ktl_autovault.is_streaming() and not is_incremental() and include_ghost_record -%}
+
+    union all
+
+    {{ ktl_autovault.hub_ghost_record(model, dv_system) }}
+
+    {%- endif -%}
+
+{%- endmacro %}
+
+
+{% macro hub_transform_single(model, dv_system, from_ref_model=false) -%}
+
+    {#-
+        This macro is used to transform a single source table into a hub table.
+
+        Arguments:
+            model (dict): The model configuration, including target, source, and business key definitions.
+            dv_system (dict): The system columns configuration, can be defined as project variables in the dbt_project.yml file.
+            from_ref_model (bool, optional): Indicates if the source table is a dbt ref model (true) or source model (false). Defaults is false.
+
+        Example:
+            {%- set model_yml -%}
+
+            target_schema: integration
+            target_table: hub_customer
+            target_entity_type: hub
+            source_schema: source
+            source_table: corebank_customer
+            collision_code: CORE
+            columns:
+              # required keys: hash_key_hub, biz_key
+              - target: dv_hkey_hub_customer
+                dtype: string
+                key_type: hash_key_hub
+                source:
+                  - CUS_CUSTOMER_CODE
+
+              - target: CUS_CUSTOMER_CODE
+                dtype: int
+                key_type: biz_key
+                source:
+                  dtype: int
+                  name: CUS_CUSTOMER_CODE
+
+            {%- endset -%}
+
+            {%- set hub_model = fromyaml(model_yml) -%}
+            {%- set dv_system = var("dv_system") -%}
+            {{ ktl_autovault.hub_transform_single(model=hub_model, dv_system=dv_system) }}
+    -#}
+
+    {%- set hkey_name = ktl_autovault.render_hash_key_hub_name(model) -%}
+    {%- set ldt_keys = ktl_autovault.render_list_dv_system_ldt_key_name(dv_system) -%}
+    {%- set src_ldt_keys = ktl_autovault.render_list_source_ldt_key_name(dv_system) -%}
+
+    with
+        cte_stg_hub as (
+            select
+                {{ ktl_autovault.render_hash_key_hub_treatment(model) }},
+
+                {% for expr in ktl_autovault.render_list_biz_key_treatment(model) -%}
+                    {{ expr }},
+                {% endfor %}
+
+                {% for expr in ktl_autovault.render_list_dv_system_column_treatment(dv_system) -%}
+                    {{ expr }},
+                {% endfor %}
+
+                {{ ktl_autovault.render_collision_code_treatment(model) }}
+
+            from
+                {{ ktl_autovault.render_source_table_name(model, from_ref_model) }}
+            where
+                1 = 1
+                {%- for expr in ktl_autovault.render_list_hash_key_hub_component(model) %}
+                    and {{ expr }} is not null
+                {%- endfor %}
+
+                {%- if is_incremental() %}
+
+                    {#
+                        When running incrementally:
+                        - It checks if the source's load date/time is greater than the maximum load date/time in the existing table for the specific collision code.
+                        - If no records exist for this collision code, it falls back to '1900-01-01' as a starting point.
+                        - This approach filters out records that have already been loaded.
+                        The collision code allow tracking of records from different origins within the same hub table.
+                    -#}
+
+                    and {{ src_ldt_keys[0] }} > coalesce(
+                        (
+                            select max({{ ldt_keys[0] }}) from {{ this }}
+                            where {{ ktl_autovault.render_collision_code_name() }} = {{ "'" + model.get('collision_code') + "'" }}
+                        ),
+                        {{ ktl_autovault.timestamp('1900-01-01') }}
+                    )
+
+                {%- endif %}
+        ),
+
+        cte_stg_hub_latest_records as (
+            select *
+            from
+                (
+                    select
+                        cte_stg_hub.*,
+
+                        row_number() over (
+                            partition by {{ hkey_name }}
+                            order by
+                                {% for key in ldt_keys -%}
+                                    {{ key }} asc {{- ',' if not loop.last }}
+                                {% endfor %}
+                        ) as row_num
+
+                    from cte_stg_hub
+                )
+            where row_num = 1
+        )
+
+    select
+        {{ hkey_name }},
+
+        {% for expr in ktl_autovault.render_list_biz_key_name(model) -%}
+            {{ expr }},
+        {% endfor %}
+
+        {% for expr in ktl_autovault.render_list_dv_system_column_name(dv_system) -%}
+            {{ expr }},
+        {% endfor %}
+
+        {{ ktl_autovault.render_collision_code_name() }}
+
+    from
+        cte_stg_hub_latest_records src
+
+    {%- if ktl_autovault.is_streaming() or is_incremental() %}
+
+    where
+        not exists (
+            select 1
+            from {{ this }} tgt
+            where tgt.{{ hkey_name }} = src.{{ hkey_name }}
+        )
+
+    {%- endif -%}
+
+{%- endmacro %}
