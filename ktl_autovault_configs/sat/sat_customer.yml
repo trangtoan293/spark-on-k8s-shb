@@ -1,0 +1,66 @@
+source_schema: landing
+source_table: post_office_transactions
+target_entity_type: sat
+target_schema: integration
+target_table: sat_customer
+description: lưu trữ attribute của khách hàng
+parent_table: hub_customer
+collision_code: AUTO
+columns:
+- target: dv_hkey_sat_customer
+  key_type: hash_key_sat
+  dtype: string
+  source: 'null'
+- target: dv_hkey_hub_customer
+  key_type: hash_key_hub
+  dtype: string
+  source:
+  - RECEIVER_NAME
+- target: dv_hsh_dif
+  dtype: string
+  key_type: hash_diff
+- target: SENDER_NAME
+  dtype: string
+  source:
+    name: SENDER_NAME
+    dtype: string
+- target: SENDER_PHONE
+  dtype: string
+  source:
+    name: SENDER_PHONE
+    dtype: string
+- target: SENDER_ADDRESS_DETAIL
+  dtype: string
+  source:
+    name: SENDER_ADDRESS_DETAIL
+    dtype: string
+- target: SENDER_ADDRESS_DISTRICT
+  dtype: string
+  source:
+    name: SENDER_ADDRESS_DISTRICT
+    dtype: string
+- target: SENDER_ADDRESS_PROVINCE
+  dtype: string
+  source:
+    name: SENDER_ADDRESS_PROVINCE
+    dtype: string
+- target: RECEIVER_PHONE
+  dtype: string
+  source:
+    name: RECEIVER_PHONE
+    dtype: string
+- target: RECEIVER_ADDRESS_DETAIL
+  dtype: string
+  source:
+    name: RECEIVER_ADDRESS_DETAIL
+    dtype: string
+- target: RECEIVER_ADDRESS_DISTRICT
+  dtype: string
+  source:
+    name: RECEIVER_ADDRESS_DISTRICT
+    dtype: string
+- target: RECEIVER_ADDRESS_PROVINCE
+  dtype: string
+  source:
+    name: RECEIVER_ADDRESS_PROVINCE
+    dtype: string

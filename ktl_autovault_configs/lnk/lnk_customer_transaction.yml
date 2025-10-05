@@ -1,0 +1,26 @@
+source_schema: landing
+source_table: post_office_transactions
+target_entity_type: lnk
+target_schema: integration
+target_table: lnk_customer_transaction
+description: lưu trữ mối quan hệ giữa customer và transaction
+collision_code: AUTO
+columns:
+- target: dv_hkey_lnk_customer_transaction
+  key_type: hash_key_lnk
+  dtype: string
+  source:
+  - TRANSACTION_ID
+  - RECEIVER_NAME
+- target: dv_hkey_hub_customer
+  key_type: hash_key_hub
+  parent: hub_customer
+  dtype: string
+  source:
+  - RECEIVER_NAME
+- target: dv_hkey_hub_transaction
+  key_type: hash_key_hub
+  parent: hub_transaction
+  dtype: string
+  source:
+  - TRANSACTION_ID

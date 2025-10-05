@@ -1,12 +1,8 @@
 version: 2
 
 sources:
-  - name: source
-    schema: source
+  - name: landing
+    schema: landing
     tables:
-      - name: corebank_customer
-      - name: corecard_customer
-      - name: ref_eod
-      - name: crm_customer
-      - name: corebank_corp
-      - name: corecard_corp
+      - name: post_office_transactions_stream
+      - name: post_office_transactions

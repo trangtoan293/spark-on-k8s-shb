@@ -1,0 +1,46 @@
+source_schema: landing
+source_table: post_office_transactions
+target_entity_type: sat
+target_schema: integration
+target_table: sat_transaction
+description: mô tả chi tiết của transaction
+parent_table: hub_transaction
+collision_code: AUTO
+columns:
+- target: dv_hkey_sat_transaction
+  key_type: hash_key_sat
+  dtype: string
+  source: 'null'
+- target: dv_hkey_hub_transaction
+  key_type: hash_key_hub
+  dtype: string
+  source:
+  - TRANSACTION_ID
+- target: dv_hsh_dif
+  dtype: string
+  key_type: hash_diff
+- target: SERVICE_TYPE
+  dtype: string
+  source:
+    name: SERVICE_TYPE
+    dtype: string
+- target: SENT_DATE
+  dtype: timestamp
+  source:
+    name: SENT_DATE
+    dtype: timestamp
+- target: WEIGHT_GRAM
+  dtype: double
+  source:
+    name: WEIGHT_GRAM
+    dtype: double
+- target: FEE_VND
+  dtype: double
+  source:
+    name: FEE_VND
+    dtype: double
+- target: STATUS
+  dtype: string
+  source:
+    name: STATUS
+    dtype: string

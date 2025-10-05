@@ -1,1 +1,0 @@
-SELECT * FROM {{ref("dim_card_indi")}}

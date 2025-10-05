@@ -1,0 +1,19 @@
+source_schema: landing
+source_table: post_office_transactions
+target_entity_type: hub
+target_schema: integration
+target_table: hub_customer
+description: lưu key customer
+collision_code: demo
+columns:
+- target: dv_hkey_hub_customer
+  key_type: hash_key_hub
+  dtype: string
+  source:
+  - RECEIVER_NAME
+- target: RECEIVER_NAME
+  key_type: biz_key
+  dtype: string
+  source:
+    name: RECEIVER_NAME
+    dtype: string
