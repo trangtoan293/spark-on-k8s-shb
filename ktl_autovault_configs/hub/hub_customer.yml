@@ -5,6 +5,7 @@ target_schema: integration
 target_table: hub_customer
 description: lưu key customer
 collision_code: demo
+is_streaming: false
 columns:
 - target: dv_hkey_hub_customer
   key_type: hash_key_hub

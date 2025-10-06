@@ -6,6 +6,7 @@ target_table: sat_customer
 description: lưu trữ attribute của khách hàng
 parent_table: hub_customer
 collision_code: AUTO
+is_streaming: false
 columns:
 - target: dv_hkey_sat_customer
   key_type: hash_key_sat

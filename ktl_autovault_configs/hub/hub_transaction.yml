@@ -5,6 +5,7 @@ target_schema: integration
 target_table: hub_transaction
 description: lưu id của transaction
 collision_code: demo
+is_streaming: false
 columns:
 - target: dv_hkey_hub_transaction
   key_type: hash_key_hub

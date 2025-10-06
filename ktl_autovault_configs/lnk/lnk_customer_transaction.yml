@@ -5,6 +5,7 @@ target_schema: integration
 target_table: lnk_customer_transaction
 description: lưu trữ mối quan hệ giữa customer và transaction
 collision_code: AUTO
+is_streaming: false
 columns:
 - target: dv_hkey_lnk_customer_transaction
   key_type: hash_key_lnk
