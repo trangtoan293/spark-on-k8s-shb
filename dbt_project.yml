@@ -81,6 +81,7 @@ models:
   ktl_dbt:
     # Config indicated by + and applies to all files under models/example/
     integration:
+      +is_streaming: false
       +materialized: incremental
       +file_format: iceberg
       +tblproperties:
