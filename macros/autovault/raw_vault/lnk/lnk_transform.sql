@@ -1,4 +1,4 @@
-{%- macro lnk_transform(model, dv_system, materialized="streaming") -%}
+{%- macro lnk_transform(model, dv_system, materialized="incremental") -%}
 
     {{- config(materialized=materialized) -}}
 
@@ -19,7 +19,7 @@
                 {% endfor %}
 
             from
-                {% if materialized == "streaming" -%}
+                {% if materialized == "incremental" -%}
                     {{ render_source_table_view_name(model) }}
                 {%- else -%}
                     {{ render_source_table_full_name(model) }}
@@ -49,7 +49,7 @@
             where row_num = 1
         )
 
-        {%- if is_streaming() -%}
+        {%- if is_incremental() -%}
             ,
 
             cte_stg_lnk_existed_keys as (
@@ -78,7 +78,7 @@
 
     from cte_stg_lnk_latest_records src
     
-    {%- if is_streaming() %}
+    {%- if is_incremental() %}
 
         where
             not exists (
