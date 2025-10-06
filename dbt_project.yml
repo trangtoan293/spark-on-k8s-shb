@@ -53,7 +53,7 @@ vars:
         dtype: string
         description: 'loại CDC (change data capture) bao gồm :"R"="read", "I"="insert", "U"="update" và "D"="delete"'
         source:
-          name: 'I'
+          name: "'I'"
           dtype: string
 
       - target: dv_src_ldt
