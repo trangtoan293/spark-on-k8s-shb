@@ -132,7 +132,7 @@
 
     from cte_stg_lnk_latest_records src
     
-    {%- if ktl_autovault.is_streaming() or is_incremental() %}
+    {%- if is_incremental() %}
 
         where
             not exists (
@@ -143,7 +143,7 @@
 
     {%- endif %}
         
-    {%- if not ktl_autovault.is_streaming() and not is_incremental() and include_ghost_record %}
+    {%- if not is_incremental() and include_ghost_record %}
 
     union all
 

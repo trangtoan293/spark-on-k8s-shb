@@ -70,10 +70,6 @@
 
     {%- set from_ref_model = from_ref_model or sources[0].get('from_ref_model', false) -%}
 
-    {%- if ktl_autovault.is_streaming() -%}
-        {%- do model.update(sources[0]) -%}
-        {{ ktl_autovault.hub_transform_single(model, dv_system, from_ref_model) }}
-    {%- endif -%}
 
     {%- do model.update(sources[0]) -%}
     {%- for source in sources -%}
@@ -105,7 +101,7 @@
 
     {% endif -%}
 
-    {%- if not ktl_autovault.is_streaming() and not is_incremental() and include_ghost_record -%}
+    {%- if not is_incremental() and include_ghost_record -%}
 
     union all
 
@@ -241,7 +237,7 @@
     from
         cte_stg_hub_latest_records src
 
-    {%- if ktl_autovault.is_streaming() or is_incremental() %}
+    {%- if is_incremental() %}
 
     where
         not exists (
