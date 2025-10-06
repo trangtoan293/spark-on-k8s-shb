@@ -1,7 +1,7 @@
-name: 'simple_dbt_project'
+name: 'ktl_dbt'
 version: '1.0.0'
 config-version: 2
-profile: 'simple_dbt_project'
+profile: 'ktl_dbt'
 
 model-paths: ["models"]
 test-paths: ["tests"]
