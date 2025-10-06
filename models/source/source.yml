@@ -6,3 +6,4 @@ sources:
     tables:
       - name: post_office_transactions_stream
       - name: post_office_transactions
+      - name: ref_eod
