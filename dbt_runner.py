@@ -7,7 +7,6 @@ Wrapper script để run dbt từ external git repository với Spark environmen
 import sys
 import os
 from pathlib import Path
-from pyspark.sql import SparkSession
 import subprocess
 import logging
 import argparse
@@ -33,27 +32,17 @@ def install_dbt_dependencies(use_subprocess=False, dbt_command="dbt"):
     
     try:
         if use_subprocess:
-            from dbt.cli.main import dbtRunner
-            dbt = dbtRunner()
-            result = dbt.invoke(['deps'])
-            
-            if result.success:
-                logger.info("✅ dbt dependencies installed successfully")
-                return True
-            else:
-                logger.error("❌ dbt deps command failed")
-                if result.exception:
-                    logger.error(f"Exception: {result.exception}")
-                return False
+            # Run deps in a separate process to avoid importing adapters in-runner
+            logger.info("🔄 Running dbt deps via subprocess")
+            return run_dbt_subprocess(dbt_command, ['deps'])
         else:
-            # Use dbtRunner (original method)
+            # Use dbtRunner (in-process)
             from dbt.cli.main import dbtRunner
             dbt = dbtRunner()
-            
-            # Run dbt deps command
-            logger.info("🔄 Running dbt deps command")
+
+            logger.info("🔄 Running dbt deps (in-process)")
             result = dbt.invoke(['deps'])
-            
+
             if result.success:
                 logger.info("✅ dbt dependencies installed successfully")
                 return True
@@ -175,17 +164,10 @@ def main():
     if args.use_subprocess:
         logger.info(f"📋 Using command: {args.dbt_command}")
     
-    # Initialize Spark Session (reuse existing context if available)
-    try:
-        spark = SparkSession.getActiveSession()
-        if spark is None:
-            logger.info("No active Spark session found, creating new one")
-            spark = SparkSession.builder.appName("dbt-external-runner").getOrCreate()
-        else:
-            logger.info("Reusing existing Spark session")
-    except Exception as e:
-        logger.warning(f"Spark session setup issue: {e}")
-        spark = None
+    # Do NOT create a SparkSession here.
+    # dbt-spark will manage SparkSession/Context internally. Creating one here can
+    # lead to "Only one SparkContext should be running in this JVM" (SPARK-2243).
+    spark = None
     
     try:
         # Validate dbt project files
@@ -233,12 +215,8 @@ def main():
         logger.error(f"❌ Error running dbt: {str(e)}")
         sys.exit(1)
     finally:
-        if spark:
-            try:
-                spark.stop()
-                logger.info("Spark session stopped")
-            except:
-                pass
+        # Nothing to stop; let dbt-spark manage Spark lifecycle
+        pass
 
 if __name__ == "__main__":
     main()
