@@ -90,5 +90,5 @@ models:
 
 seeds:
   ktl_dbt:
-    +schema: source
+    +schema: landing
     +file_format: iceberg

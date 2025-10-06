@@ -1,226 +1,197 @@
-{#-
-    This file contains macros to derive columns in Autovault configuration.
--#}
-
-{% macro derive_column(column) -%}
-    {#-
-        Derive a source column based on comparison of name and datatype with the target column.
-
-        Arguments:
-            column (dict): The column configuration containing source, target (and optional format used for datetime conversion).
-
-        Autovault configuration example:
-            columns:
-              - target: load_date
-                dtype: datetime
-                source:
-                  name: load_date
-                  dtype: string
-                  format: 'yyyy-MM-dd'
-
-        -> Output: to_date(load_date, 'yyyy-MM-dd') as load_date
-    -#}
-    {%- set source_col = column.get('source') -%}
-    {%- set target_expr = ktl_autovault.cast(source_col.get('name'), source_col.get('dtype'), column.get('dtype'), source_col.get('format')) -%}
-
-    {{ target_expr }} {%- if target_expr != column.get('target') %} as {{ column.get('target') }} {%- endif -%}
-
-{%- endmacro %}
+{%- macro render_collision_code_treatment(model) -%}
+    {{ "'" + model.get('collision_code') + "'" }} as dv_ccd
+{%- endmacro -%}
 
 
-{% macro render_list_biz_key_treatment(model, ghost_record = false) -%}
-    {#-
-        Render transformation of a list of columns with key type biz_key in model configuration.
+{%- macro _render_hash_component_transformation(source_column, error_code = "'-1'", upper = False) -%}
+    {%- if upper -%}
+        coalesce(nullif(rtrim(upper(cast({{ source_column }} as string))), ''), {{ error_code }})
+    {%- else -%}
+        coalesce(nullif(rtrim(cast({{ source_column }} as string)), ''), {{ error_code }})
+    {%- endif -%}
+{%- endmacro -%}
 
-        Arguments:
-            model (dict): The model configuration containing the columns.
-            ghost_record (bool): If true, render the ghost record for the column.
-                Default is false.
 
-        Autovault configuration example:
-            columns:
-              - target: dv_hkey_hub_account
-                dtype: string
-                key_type: biz_key
-                source:
-                  name: ln_ac_nbr
-                  dtype: string
+{%- macro _render_hash_key_transformation(columns, collision_code) -%}
+    sha2(
+        {%- for column in columns -%}
 
-        -> Output: ["coalesce(nullif(upper(rtrim(cast(ln_ac_nbr as string))), ''), '-1') as dv_hkey_hub_account"]
-    -#}
+            {%- set source = column.get('source') -%}
+
+            {%- if source is mapping -%}    
+                {{ _render_hash_component_transformation(source.get('name'), upper = False) }}
+            {%- elif source is iterable and source is not string -%}
+
+                {%- for source_column in source -%}
+                    {{ _render_hash_component_transformation(source_column, upper = True) }}
+                    {%- if not loop.last %} || '#~!' || {% endif -%}
+                {%- endfor -%}
+            
+            {%- endif -%}
+            
+            {%- if not loop.last %} || '#~!' || {% endif -%}
+
+        {%- endfor %} || '#~!' || '{{collision_code}}', 256)
+{%- endmacro -%}
+
+
+{%- macro render_list_biz_key_treatment(model) -%}
     {%- set outs = [] -%}
-
     {%- for column in model.get('columns') | selectattr("key_type", "equalto", "biz_key") -%}
-
         {%- set tmp -%}
-
-            {%- if ghost_record -%}
-                {{ ktl_autovault.render_ghost_record(column) }} as {{ column.get('target') }}
-            
+            {%- if column.get('dtype') == 'string' -%}
+                {{_render_hash_component_transformation(column.get('source').get('name'), upper=True)}} as {{column.get('target')}}
             {%- else -%}
-                {%- if api.Column.translate_type(column.get('dtype')) == dbt.type_string() -%}
-                    {{ ktl_autovault.prepare_hash_component(column.get('source').get('name'), error_code = "-1", upper = true) }} as {{ column.get('target') }}
+                {%- set source_col = column.get('source') -%}
+                {%- if source_col.get('name') == column.get('target') and source_col.get('dtype') == column.get('dtype') -%}
+                    {{column.get('target')}}
+                {%- elif source_col.get('dtype') == column.get('dtype') -%}
+                    {{source_col.get('name')}} as {{column.get('target')}}
                 {%- else -%}
-                    {{ ktl_autovault.derive_column(column) }}
+                    cast({{source_col.get('name')}} as {{column.get('dtype')}}) as {{column.get('target')}}
                 {%- endif -%}
-
             {%- endif -%}
-
         {%- endset -%}
 
         {%- do outs.append(tmp) -%}
-        
+    {%- endfor -%}
+    {{ return(outs) }}
+{%- endmacro -%}
+
+
+{%- macro render_hash_key_hub_treatment(model) -%}
+    {%- set column = model.get('columns') | selectattr("key_type", "equalto", "hash_key_hub") | first -%}
+    {{ _render_hash_key_transformation([column], model.get('collision_code')) }} as {{ column.get('target') }}
+{%- endmacro -%}
+
+
+{%- macro render_hash_key_drv_treatment(model) -%}
+    {%- set column = model.get('columns') | selectattr("key_type", "equalto", "hash_key_drv") | first -%}
+    {{ _render_hash_key_transformation([column], model.get('collision_code')) }} as {{ column.get('target') }}
+{%- endmacro -%}
+
+
+{%- macro render_list_hash_key_hub_treatment(model) -%}
+    {%- set outs = [] -%}
+    {%- for column in model.get('columns') -%}
+        {%- if column.get('key_type') in ("hash_key_hub", "hash_key_drv") -%}
+            {%- set tmp -%}
+                {{_render_hash_key_transformation([column], model.get('collision_code'))}} as {{column.get('target')}}
+            {%- endset -%}
+            {% do outs.append(tmp) %}
+        {%- endif -%}
+    {%- endfor -%}
+    {{ return(outs) }}
+{%- endmacro -%}
+
+
+{%- macro render_hash_key_lnk_treatment(model) -%}
+    {%- set column = model.get('columns') | selectattr("key_type", "equalto", "hash_key_lnk") | first -%}
+    {{ _render_hash_key_transformation([column], model.get('collision_code')) }} as {{ column.get('target') }}
+{%- endmacro -%}
+
+
+{%- macro render_hash_key_sat_treatment(model, dv_system) -%}
+    {%- set columns = model.get('columns') | selectattr("key_type", "equalto", "hash_key_hub") | list -%}
+    
+    {%- do columns.extend(model.get('columns') | selectattr("key_type", "equalto", "dependent_key") | list) -%}
+    
+    {%- for key in ('dv_src_ldt', 'dv_kaf_ldt', 'dv_kaf_ofs') -%}
+        {%- do columns.append(dv_system.get('columns') | selectattr('target', 'equalto', key) | first) -%}
     {%- endfor -%}
 
-    {{ return(outs) }}
+    {%- set target = (model.get('columns') | selectattr("key_type", "equalto", "hash_key_sat") | first).get('target') -%}
+    
+    {{ _render_hash_key_transformation(columns, model.get('collision_code')) }} as {{ target }}
+{%- endmacro -%}
 
-{%- endmacro %}
+
+{%- macro render_hash_key_lsat_treatment(model, dv_system) -%}
+    {%- set columns = model.get('columns') | selectattr("key_type", "equalto", "hash_key_lnk") | list -%}
+    
+    {%- do columns.extend(model.get('columns') | selectattr("key_type", "equalto", "dependent_key") | list) -%}
+    
+    {%- for key in ('dv_src_ldt', 'dv_kaf_ldt', 'dv_kaf_ofs') -%}
+        {%- do columns.append(dv_system.get('columns') | selectattr('target', 'equalto', key) | first) -%}
+    {%- endfor -%}
+
+    {%- set target = (model.get('columns') | selectattr("key_type", "equalto", "hash_key_sat") | first).get('target') -%}
+    
+    {{ _render_hash_key_transformation(columns, model.get('collision_code')) }} as {{ target }}
+{%- endmacro -%}
 
 
-{% macro render_list_dependent_key_treatment(model, ghost_record = false) -%}
-    {#-
-        Render transformation of a list of columns with key type dependent_key in model configuration.
+{%- macro render_hash_diff_treatment(model) -%}
+    {%- set column = model.get('columns') | selectattr("key_type", "equalto", "hash_diff") | first -%}
+    {%- if 'source' not in column -%}
+        {%- set column = column.copy() -%}
+        {%- do column.update({'source': []}) -%}
+        {%- for attr_column in model.get('columns') | selectattr('key_type', 'undefined') -%}
+            {%- do column.get('source').append(attr_column.get('source').get('name')) -%}
+        {%- endfor -%}
+    {%- endif -%}
 
-        Arguments:
-            model (dict): The model configuration containing the columns.
-            ghost_record (bool): If true, render the ghost record for the column.
-                Default is false.
+    sha2(
+        {%- for source_column in column.get('source') -%}
+            {{ _render_hash_component_transformation(source_column, error_code="repeat('0', 16)") }}
+            {%- if not loop.last %} || '#~!' || {% endif -%}
+        {%- endfor -%}
+        , 256) as {{ column.get('target') }}
+{%- endmacro -%}
 
-        Autovault configuration example:
-            columns:
-              - target: ln_ac_nbr
-                dtype: int
-                key_type: dependent_key
-                source:
-                  name: ln_ac_nbr
-                  dtype: string
 
-        -> Output: ["cast(ln_ac_nbr as int) as ln_ac_nbr"]
-    -#}
+{%- macro render_list_dependent_key_treatment(model) -%}
     {%- set outs = [] -%}
-
     {%- for column in model.get('columns') | selectattr('key_type', 'equalto', "dependent_key") -%}
-
         {%- set tmp -%}
-
-            {%- if ghost_record -%}
-                {{ ktl_autovault.render_ghost_record(column) }} as {{ column.get('target') }}
-            
+            {%- set source_col = column.get('source') -%}
+            {%- if source_col.get('name') == column.get('target') and source_col.get('dtype') == column.get('dtype') -%}
+                {{column.get('target')}}
+            {%- elif source_col.get('dtype') == column.get('dtype') -%}
+                {{source_col.get('name')}} as {{column.get('target')}}
             {%- else -%}
-                {{ ktl_autovault.derive_column(column) }}
-            
+                cast({{source_col.get('name')}} as {{column.get('dtype')}}) as {{column.get('target')}}
             {%- endif -%}
-        
         {%- endset -%}
-
         {%- do outs.append(tmp) -%}
-    
     {%- endfor -%}
-    
     {{ return(outs) }}
+{%- endmacro -%}
 
-{%- endmacro %}
 
-
-{% macro render_list_attr_column_treatment(model, ghost_record = false) -%}
-    {#-
-        Render transformation of a list of columns with undefined key type in model configuration.
-
-        Arguments:
-            model (dict): The model configuration containing the columns.
-            ghost_record (bool): If true, render the ghost record for the column.
-                Default is false.
-
-        Autovault configuration example:
-            columns:
-              - target: br_cd
-                dtype: int
-                source:
-                  name: br_cd
-                  dtype: string
-              - target: book_date
-                dtype: date
-                source:
-                  name: book_date
-                  dtype: string
-              - target: value_date
-                dtype: date
-                source:
-                  name: value_date
-                  dtype: date
-
-        -> Output: ["cast(br_cd as int) as br_cd", "to_date(book_date) as book_date", "value_date"]
-    -#}
+{%- macro render_list_attr_column_treatment(model) -%}
     {%- set outs = [] -%}
-
     {%- for column in model.get('columns') | selectattr('key_type', 'undefined') -%}
-
         {%- set tmp -%}
-
-            {%- if ghost_record -%}
-                {{ ktl_autovault.render_ghost_record(column) }} as {{ column.get('target') }}
-            
+            {%- set source_col = column.get('source') -%}
+            {%- if source_col.get('name') == column.get('target') and source_col.get('dtype') == column.get('dtype') -%}
+                {{column.get('target')}}
+            {%- elif source_col.get('dtype') == column.get('dtype') -%}
+                {{source_col.get('name')}} as {{column.get('target')}}
             {%- else -%}
-                {{ ktl_autovault.derive_column(column) }}
-            
+                cast({{source_col.get('name')}} as {{column.get('dtype')}}) as {{column.get('target')}}
             {%- endif -%}
-        
         {%- endset -%}
-
         {%- do outs.append(tmp) -%}
-    
     {%- endfor -%}
-    
     {{ return(outs) }}
+{%- endmacro -%}
 
-{%- endmacro %}
 
-
-{%- macro render_list_dv_system_column_treatment(dv_system, ghost_record = false) -%}
-    {#-
-        Render transformation of a list of columns in Data Vault system configuration.
-
-        Arguments:
-            dv_system (dict): The Data Vault system configuration containing the columns.
-            ghost_record (bool): If true, render the ghost record for the column.
-                Default is false.
-
-        Autovault configuration example:
-            columns:
-              - target: dv_src_ldt
-                dtype: timestamp
-                source:
-                  name: load_datetime
-                  dtype: string
-                  format: 'yyyy-MM-dd HH:mm:ss.SSS'
-              - target: dv_kaf_ldt
-                dtype: timestamp
-                source:
-                  name: kaf_load_datetime
-                  dtype: string
-
-        -> Output: ["to_timestamp(load_datetime, 'yyyy-MM-dd HH:mm:ss.SSS') as dv_src_ldt", "to_timestamp(kaf_load_datetime) as dv_kaf_ldt"]
-    -#}
+{%- macro render_list_dv_system_column_treatment(dv_system) -%}
     {%- set outs = [] -%}
-
     {%- for column in dv_system.get('columns') -%}
-
         {%- set tmp -%}
-
-            {%- if ghost_record -%}
-                {{ ktl_autovault.render_ghost_record(column) }} as {{ column.get('target') }}
-            
+            {%- set source_col = column.get('source') -%}
+            {%- if source_col.get('name') == column.get('target') and source_col.get('dtype') == column.get('dtype') -%}
+                {{column.get('target')}}
+            {%- elif source_col.get('dtype') == column.get('dtype') -%}
+                {{source_col.get('name')}} as {{column.get('target')}}
             {%- else -%}
-                {{ ktl_autovault.derive_column(column) }}
-            
+                cast({{source_col.get('name')}} as {{column.get('dtype')}}) as {{column.get('target')}}
             {%- endif -%}
-        
         {%- endset -%}
-
         {%- do outs.append(tmp) -%}
-    
     {%- endfor -%}
-    
     {{ return(outs) }}
-
 {%- endmacro -%}
