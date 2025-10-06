@@ -1,7 +1,7 @@
 source_schema: landing
 source_table: post_office_transactions
 target_entity_type: lnk
-target_schema: integration
+target_schema: integration_vnpost
 target_table: lnk_customer_transaction
 description: lưu trữ mối quan hệ giữa customer và transaction
 collision_code: AUTO

@@ -1,7 +1,7 @@
 source_schema: landing
 source_table: post_office_transactions
 target_entity_type: sat
-target_schema: integration
+target_schema: integration_vnpost
 target_table: sat_transaction
 description: mô tả chi tiết của transaction
 parent_table: hub_transaction

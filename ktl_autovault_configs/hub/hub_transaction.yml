@@ -1,7 +1,7 @@
 source_schema: landing
 source_table: post_office_transactions
 target_entity_type: hub
-target_schema: integration
+target_schema: integration_vnpost
 target_table: hub_transaction
 description: lưu id của transaction
 collision_code: demo
