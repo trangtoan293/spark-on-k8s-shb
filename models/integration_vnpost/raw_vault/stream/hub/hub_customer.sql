@@ -1,3 +1,8 @@
+{{ config(
+    materialized='incremental',
+    file_format='iceberg',
+    incremental_strategy='merge'
+) }}
 
 {%- set hub_customer = dv_config('hub_customer') -%}
 {%- set dv_system = var("dv_system") -%}

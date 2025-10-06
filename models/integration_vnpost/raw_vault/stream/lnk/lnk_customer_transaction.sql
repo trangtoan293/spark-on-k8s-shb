@@ -1,4 +1,10 @@
 
+{{ config(
+    materialized='incremental',
+    file_format='iceberg',
+    incremental_strategy='merge'
+) }}
+
 {%- set model = dv_config('lnk_customer_transaction') -%}
 {%- set dv_system = var("dv_system") -%}
 
