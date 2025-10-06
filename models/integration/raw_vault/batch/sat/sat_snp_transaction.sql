@@ -1,3 +1,8 @@
+{{ config(
+    materialized='incremental',
+    file_format='iceberg',
+    incremental_strategy='merge'
+) }}
 
 {%- set model = dv_config('sat_transaction') -%}
 {%- set dv_system = var("dv_system") -%}
