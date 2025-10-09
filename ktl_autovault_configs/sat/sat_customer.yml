@@ -5,7 +5,7 @@ target_schema: integration_vnpost
 target_table: sat_customer
 description: lưu trữ attribute của khách hàng
 parent_table: hub_customer
-collision_code: AUTO
+collision_code: demo
 is_streaming: false
 columns:
 - target: dv_hkey_sat_customer
