@@ -98,14 +98,14 @@ def read_mysql_incremental(
         (SELECT a.*, a.{id_column} AS _cdc_checkpoint_id
          FROM {mysql_table} a
          WHERE a.{id_column} > {last_id}
-         ORDER BY a.{id_column}) t
+        ) t
         """
         log.info(f"Incremental read WHERE {id_column} > {last_id}")
     else:
         query = f"""
         (SELECT a.*, a.{id_column} AS _cdc_checkpoint_id
          FROM {mysql_table} a
-         ORDER BY a.{id_column}) t
+        ) t
         """
         log.info("Initial full read (no checkpoint found)")
 

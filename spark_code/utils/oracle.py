@@ -92,14 +92,14 @@ def read_oracle_incremental_optimized(
         (SELECT a.*, a.ORA_ROWSCN AS {SCN_COL}
          FROM {oracle_table} a
          WHERE a.ORA_ROWSCN > {last_scn}
-         ORDER BY a.ORA_ROWSCN) t
+         ) t
         """
         log.info(f"Incremental read WHERE ORA_ROWSCN > {last_scn}")
     else:
         query = f"""
         (SELECT a.*, a.ORA_ROWSCN AS {SCN_COL}
          FROM {oracle_table} a
-         ORDER BY a.ORA_ROWSCN) t
+         ) t
         """
         log.info("Initial full read (no checkpoint found)")
 
