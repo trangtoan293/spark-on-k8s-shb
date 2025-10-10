@@ -10,7 +10,6 @@ from pathlib import Path
 import subprocess
 import logging
 import argparse
-from utils.dbt_artifacts_uploader import upload_dbt_artifacts
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -143,6 +142,18 @@ def main():
     # Set environment variables
     os.environ['DBT_PROFILES_DIR'] = dbt_project_dir
     os.environ['DBT_PROJECT_DIR'] = dbt_project_dir
+
+    # Import uploader only when needed and after switching into the project dir so that
+    # Python can resolve the local package path (fixes ModuleNotFoundError in k8s driver)
+    if args.upload_artifacts:
+        try:
+            # Ensure the dbt project directory is on sys.path for module resolution
+            if dbt_project_dir not in sys.path:
+                sys.path.insert(0, dbt_project_dir)
+            from utils.dbt_artifacts_uploader import upload_dbt_artifacts
+        except ModuleNotFoundError:
+            logger.error("No module named 'utils.dbt_artifacts_uploader'. Ensure the project contains 'utils/' with __init__.py and the uploader module, and that we run from the project root.")
+            sys.exit(1)
     
     # Create writable directories in temp space
     os.makedirs("/tmp/dbt_target", exist_ok=True)
