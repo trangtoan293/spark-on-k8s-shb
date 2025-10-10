@@ -122,6 +122,20 @@ def main():
                         help='Relative target dir containing dbt artifacts (default: target)')
     parser.add_argument('--artifacts-logs-dir', default='logs',
                         help='Relative logs dir containing dbt.log (default: logs)')
+    # MinIO/S3 options
+    parser.add_argument('--s3-endpoint-url', default=None,
+                        help='Custom S3/MinIO endpoint URL (e.g., http://minio:9000)')
+    parser.add_argument('--s3-region', default=None,
+                        help='AWS region name (default inferred or env AWS_DEFAULT_REGION)')
+    parser.add_argument('--s3-access-key-id', default=None,
+                        help='Explicit S3 access key ID (MinIO/AWS)')
+    parser.add_argument('--s3-secret-access-key', default=None,
+                        help='Explicit S3 secret access key (MinIO/AWS)')
+    parser.add_argument('--s3-session-token', default=None,
+                        help='Optional AWS session token')
+    parser.add_argument('--s3-no-verify-ssl', action='store_true',
+                        help='Disable SSL verification for S3/MinIO (useful for self-signed)')
+    # Note: uploads run sequentially; no concurrency settings needed
     
     # Parse known args to separate our flags from dbt args
     args, remaining_args = parser.parse_known_args()
@@ -276,6 +290,12 @@ def main():
                     project_dir=dbt_project_dir,
                     target_dir=effective_target_dir,
                     logs_dir=effective_logs_dir,
+                    endpoint_url=args.s3_endpoint_url,
+                    region_name=args.s3_region,
+                    access_key=args.s3_access_key_id,
+                    secret_key=args.s3_secret_access_key,
+                    session_token=args.s3_session_token,
+                    verify_ssl=(not args.s3_no_verify_ssl),
                 )
                 if uploaded:
                     logger.info("✅ Uploaded dbt artifacts to S3")
@@ -306,6 +326,12 @@ def main():
                         project_dir=dbt_project_dir,
                         target_dir=effective_target_dir,
                         logs_dir=effective_logs_dir,
+                        endpoint_url=args.s3_endpoint_url,
+                        region_name=args.s3_region,
+                        access_key=args.s3_access_key_id,
+                        secret_key=args.s3_secret_access_key,
+                        session_token=args.s3_session_token,
+                        verify_ssl=(not args.s3_no_verify_ssl),
                     )
                     if uploaded:
                         logger.info("✅ Uploaded dbt artifacts to S3")
