@@ -16,7 +16,6 @@ from utils.dbt_artifacts_uploader import upload_dbt_artifacts
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-{{ ... }}
 def install_dbt_dependencies(use_subprocess=False, dbt_command="dbt"):
     """Install dbt project dependencies if packages.yml exists
     
