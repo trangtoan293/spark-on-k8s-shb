@@ -16,14 +16,14 @@ columns:
   key_type: hash_key_hub
   dtype: string
   source:
-  - RECEIVER_NAME
+  - SENDER_NAME
 - target: dv_hsh_dif
   dtype: string
   key_type: hash_diff
-- target: SENDER_NAME
+- target: RECEIVER_NAME
   dtype: string
   source:
-    name: SENDER_NAME
+    name: RECEIVER_NAME
     dtype: string
 - target: SENDER_PHONE
   dtype: string

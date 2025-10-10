@@ -11,10 +11,10 @@ columns:
   key_type: hash_key_hub
   dtype: string
   source:
-  - RECEIVER_NAME
-- target: RECEIVER_NAME
+  - SENDER_NAME
+- target: SENDER_NAME
   key_type: biz_key
   dtype: string
   source:
-    name: RECEIVER_NAME
+    name: SENDER_NAME
     dtype: string

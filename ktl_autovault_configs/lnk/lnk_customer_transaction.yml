@@ -12,13 +12,13 @@ columns:
   dtype: string
   source:
   - TRANSACTION_ID
-  - RECEIVER_NAME
+  - SENDER_NAME
 - target: dv_hkey_hub_customer
   key_type: hash_key_hub
   parent: hub_customer
   dtype: string
   source:
-  - RECEIVER_NAME
+  - SENDER_NAME
 - target: dv_hkey_hub_transaction
   key_type: hash_key_hub
   parent: hub_transaction
