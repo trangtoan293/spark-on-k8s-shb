@@ -159,6 +159,22 @@ def main():
     os.makedirs("/tmp/dbt_target", exist_ok=True)
     os.makedirs("/tmp/dbt_logs", exist_ok=True)
     logger.info("Created writable temp directories for dbt target and logs")
+    # Honor deprecation guidance: prefer env/CLI over dbt_project.yml for target/log paths
+    # Set env defaults only if not already provided from outside
+    if not os.environ.get('DBT_TARGET_PATH'):
+        os.environ['DBT_TARGET_PATH'] = "/tmp/dbt_target"
+    if not os.environ.get('DBT_LOG_PATH'):
+        os.environ['DBT_LOG_PATH'] = "/tmp/dbt_logs"
+    logger.info(f"Using DBT_TARGET_PATH={os.environ.get('DBT_TARGET_PATH')}, DBT_LOG_PATH={os.environ.get('DBT_LOG_PATH')}")
+
+    # Compute initial effective artifact directories for uploader (can be overridden by CLI)
+    effective_target_dir = args.artifacts_target_dir
+    effective_logs_dir = args.artifacts_logs_dir
+    if effective_target_dir == 'target' and os.environ.get('DBT_TARGET_PATH'):
+        effective_target_dir = os.environ['DBT_TARGET_PATH']
+    if effective_logs_dir == 'logs' and os.environ.get('DBT_LOG_PATH'):
+        effective_logs_dir = os.environ['DBT_LOG_PATH']
+    logger.info(f"Initial artifact dirs: target_dir={effective_target_dir}, logs_dir={effective_logs_dir}")
     
     # Get dbt command arguments
     dbt_args = []
@@ -177,6 +193,41 @@ def main():
             continue
         else:
             dbt_args.append(arg)
+
+    # Detect explicit CLI overrides for paths and align env/effective dirs
+    cli_target_path = None
+    cli_log_path = None
+    i = 0
+    while i < len(dbt_args):
+        tok = dbt_args[i]
+        if tok == '--target-path' and i + 1 < len(dbt_args):
+            cli_target_path = dbt_args[i + 1]
+            i += 2
+            continue
+        if tok.startswith('--target-path='):
+            cli_target_path = tok.split('=', 1)[1]
+            i += 1
+            continue
+        if tok == '--log-path' and i + 1 < len(dbt_args):
+            cli_log_path = dbt_args[i + 1]
+            i += 2
+            continue
+        if tok.startswith('--log-path='):
+            cli_log_path = tok.split('=', 1)[1]
+            i += 1
+            continue
+        i += 1
+
+    if cli_target_path:
+        os.environ['DBT_TARGET_PATH'] = cli_target_path
+        effective_target_dir = cli_target_path
+        logger.info(f"Detected CLI --target-path, using {cli_target_path}")
+    if cli_log_path:
+        os.environ['DBT_LOG_PATH'] = cli_log_path
+        effective_logs_dir = cli_log_path
+        logger.info(f"Detected CLI --log-path, using {cli_log_path}")
+
+    logger.info(f"Artifacts will be collected from target_dir={effective_target_dir}, logs_dir={effective_logs_dir}")
     
     # Default command if no args provided
     if not dbt_args:
@@ -223,8 +274,8 @@ def main():
                     bucket=args.s3_bucket,
                     prefix=args.s3_prefix or '',
                     project_dir=dbt_project_dir,
-                    target_dir=args.artifacts_target_dir,
-                    logs_dir=args.artifacts_logs_dir,
+                    target_dir=effective_target_dir,
+                    logs_dir=effective_logs_dir,
                 )
                 if uploaded:
                     logger.info("✅ Uploaded dbt artifacts to S3")
@@ -253,8 +304,8 @@ def main():
                         bucket=args.s3_bucket,
                         prefix=args.s3_prefix or '',
                         project_dir=dbt_project_dir,
-                        target_dir=args.artifacts_target_dir,
-                        logs_dir=args.artifacts_logs_dir,
+                        target_dir=effective_target_dir,
+                        logs_dir=effective_logs_dir,
                     )
                     if uploaded:
                         logger.info("✅ Uploaded dbt artifacts to S3")
