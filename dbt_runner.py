@@ -10,11 +10,13 @@ from pathlib import Path
 import subprocess
 import logging
 import argparse
+from utils.dbt_artifacts_uploader import upload_dbt_artifacts
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+{{ ... }}
 def install_dbt_dependencies(use_subprocess=False, dbt_command="dbt"):
     """Install dbt project dependencies if packages.yml exists
     
@@ -111,6 +113,17 @@ def main():
                         help='Use subprocess to run dbt command instead of dbtRunner')
     parser.add_argument('--dbt-command', default='dbt', 
                         help='dbt command to use (default: dbt, can use ktl_dbt)')
+    # Optional: upload artifacts to S3 after successful run
+    parser.add_argument('--upload-artifacts', action='store_true',
+                        help='Upload dbt artifacts (manifest, run_results, catalog, dbt.log) to S3 after a successful run')
+    parser.add_argument('--s3-bucket',
+                        help='Target S3 bucket for artifacts (required when --upload-artifacts)')
+    parser.add_argument('--s3-prefix', default='',
+                        help='Optional S3 key prefix for uploaded artifacts, e.g. "dbt/artifacts/2025-10-10"')
+    parser.add_argument('--artifacts-target-dir', default='target',
+                        help='Relative target dir containing dbt artifacts (default: target)')
+    parser.add_argument('--artifacts-logs-dir', default='logs',
+                        help='Relative logs dir containing dbt.log (default: logs)')
     
     # Parse known args to separate our flags from dbt args
     args, remaining_args = parser.parse_known_args()
@@ -191,6 +204,22 @@ def main():
             success = run_dbt_subprocess(args.dbt_command, dbt_args)
             if not success:
                 sys.exit(1)
+            # After a successful run, optionally upload artifacts to S3
+            if args.upload_artifacts:
+                if not args.s3_bucket:
+                    logger.error("--s3-bucket is required when --upload-artifacts is set")
+                    sys.exit(1)
+                uploaded = upload_dbt_artifacts(
+                    bucket=args.s3_bucket,
+                    prefix=args.s3_prefix or '',
+                    project_dir=dbt_project_dir,
+                    target_dir=args.artifacts_target_dir,
+                    logs_dir=args.artifacts_logs_dir,
+                )
+                if uploaded:
+                    logger.info("✅ Uploaded dbt artifacts to S3")
+                else:
+                    logger.error("❌ Failed to upload dbt artifacts to S3")
         else:
             # Use dbtRunner method (original)
             from dbt.cli.main import dbtRunner, dbtRunnerResult
@@ -205,6 +234,22 @@ def main():
                 logger.info(f"{r.node.name}: {r.status}")
             if res.success:
                 logger.info("✅ dbt command completed successfully")
+                # After a successful run, optionally upload artifacts to S3
+                if args.upload_artifacts:
+                    if not args.s3_bucket:
+                        logger.error("--s3-bucket is required when --upload-artifacts is set")
+                        sys.exit(1)
+                    uploaded = upload_dbt_artifacts(
+                        bucket=args.s3_bucket,
+                        prefix=args.s3_prefix or '',
+                        project_dir=dbt_project_dir,
+                        target_dir=args.artifacts_target_dir,
+                        logs_dir=args.artifacts_logs_dir,
+                    )
+                    if uploaded:
+                        logger.info("✅ Uploaded dbt artifacts to S3")
+                    else:
+                        logger.error("❌ Failed to upload dbt artifacts to S3")
             else:
                 logger.error("❌ dbt command failed")
                 if res.exception:
