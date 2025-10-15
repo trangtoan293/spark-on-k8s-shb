@@ -57,12 +57,13 @@ def execute_sql_file_wrapper(
         sql_content = read_file()
     else:
         sql_content = read_sql_file(spark, file_path)
-    # Substitute branch placeholder
-    branch_val = None
-    try:
-        branch_val = spark.conf.get('spark.wap.branch')
-    except Exception:
-        branch_val = os.environ.get('WAP_BRANCH')
+    # Substitute branch placeholder (prioritize env over sparkConf)
+    branch_val = os.environ.get('WAP_BRANCH')
+    if not branch_val:
+        try:
+            branch_val = spark.conf.get('spark.wap.branch')
+        except Exception:
+            pass
     if branch_val:
         sql_content = sql_content.replace('${WAP_BRANCH}', branch_val)
     
@@ -92,12 +93,13 @@ def execute_sql_text_wrapper(
     """Execute SQL text with multiple statements (with optional profiling)"""
     log.info("=== Executing SQL text ===")
     
-    # Substitute branch placeholder
-    branch_val = None
-    try:
-        branch_val = spark.conf.get('spark.wap.branch')
-    except Exception:
-        branch_val = os.environ.get('WAP_BRANCH')
+    # Substitute branch placeholder (prioritize env over sparkConf)
+    branch_val = os.environ.get('WAP_BRANCH')
+    if not branch_val:
+        try:
+            branch_val = spark.conf.get('spark.wap.branch')
+        except Exception:
+            pass
     if branch_val:
         sql_text = sql_text.replace('${WAP_BRANCH}', branch_val)
     # Parse SQL statements

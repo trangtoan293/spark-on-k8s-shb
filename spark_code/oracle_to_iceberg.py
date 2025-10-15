@@ -70,6 +70,22 @@ def main():
 
     spark = create_spark("oracle-to-iceberg-optimized")
 
+    # Resolve WAP branch from env or SparkConf and set on session
+    branch = os.environ.get("WAP_BRANCH")
+    if not branch:
+        try:
+            branch = spark.conf.get("spark.wap.branch")
+        except Exception:
+            branch = None
+    if branch:
+        try:
+            spark.conf.set("spark.wap.branch", branch)
+        except Exception:
+            pass
+        log.info(f"Using WAP branch for this run: {branch}")
+    else:
+        log.warning("WAP branch not provided. Writes will go to 'main'. Set WAP_BRANCH env or spark.wap.branch.")
+
     # Initialize tuning tools if enabled
     collector = profiler = optimizer = skew_detector = tracker = None
     
@@ -146,9 +162,13 @@ def main():
                 solutions = skew_detector.suggest_skew_solutions(df)
                 log.info("Skew solutions available in tuning report")
 
-        # Ensure DB/table exists
-        ensure_db_exists(spark, args.iceberg_table)
-        ensure_table_exists(spark, args.iceberg_table, df)
+        # Determine base and target table names (target may be a branch)
+        base_table = args.iceberg_table
+        target_table = f"{base_table}.branch_{branch}" if branch else base_table
+
+        # Ensure base DB/table exists (branch references the same table)
+        ensure_db_exists(spark, base_table)
+        ensure_table_exists(spark, base_table, df)
         
         # Analyze query optimization opportunities if tuning enabled
         if args.enable_tuning and optimizer:
@@ -161,14 +181,14 @@ def main():
         max_scn = max_scn_in_source  # Reuse from fast check
         log.info(f"Max SCN from fast check: {max_scn}")
 
-        # Perform MERGE
+        # Perform MERGE (write to branch when provided)
         if profiler:
             @profiler.profile_function("iceberg_merge")
             def do_merge():
-                merge_simple(spark, df, args.iceberg_table, args.primary_key)
+                merge_simple(spark, df, target_table, args.primary_key)
             do_merge()
         else:
-            merge_simple(spark, df, args.iceberg_table, args.primary_key)
+            merge_simple(spark, df, target_table, args.primary_key)
 
         # Update checkpoint
         if max_scn is not None:
@@ -183,7 +203,7 @@ def main():
             spark,
             source_system="oracle",
             source_table=args.oracle_table,
-            iceberg_table=args.iceberg_table,
+            iceberg_table=target_table,
             status="SUCCESS",
             rows_processed=row_count,
             max_scn=max_scn,
