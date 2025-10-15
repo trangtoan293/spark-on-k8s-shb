@@ -93,3 +93,7 @@ seeds:
   ktl_dbt:
     +schema: landing
     +file_format: iceberg
+
+on-run-start:
+  - "SET spark.wap.branch='{{ env_var('WAP_BRANCH') }}'"
+  - "{{ log('dbt WAP branch = ' ~ env_var('WAP_BRANCH'), info=True) }}"
