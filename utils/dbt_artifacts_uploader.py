@@ -97,7 +97,7 @@ def _upload_via_boto3(
             try:
                 key = f"{norm_prefix}/{p.name}" if norm_prefix else p.name
                 extra_args = {"ContentType": _detect_mime(p)}
-                logger.info(f"Uploading via boto3 s3://{bucket}/{key} <- {p}")
+                logger.info(f"Uploading via boto3 s3a://{bucket}/{key} <- {p}")
                 s3.upload_file(str(p), bucket, key, ExtraArgs=extra_args)
             except (ClientError, BotoCoreError, Exception) as e:
                 ok = False
@@ -120,7 +120,7 @@ def _upload_via_aws_cli(
     ok = True
     for p in paths:
         key = f"{prefix.rstrip('/')}/{p.name}" if prefix else p.name
-        dest = f"s3://{bucket}/{key}"
+        dest = f"s3a://{bucket}/{key}"
         cmd = ["aws", "s3", "cp", str(p), dest]
         if endpoint_url or os.environ.get("AWS_ENDPOINT_URL"):
             cmd.extend(["--endpoint-url", endpoint_url or os.environ.get("AWS_ENDPOINT_URL")])
