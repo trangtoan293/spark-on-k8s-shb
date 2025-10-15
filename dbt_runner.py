@@ -278,9 +278,20 @@ def main():
                         # Split by ';\n' while keeping simple; allow multiple statements
                         sql_texts.extend([s.strip() for s in content.split(';') if s.strip()])
 
+                # Resolve branch placeholder if provided
+                branch_val = os.environ.get('WAP_BRANCH')
+                if not branch_val:
+                    try:
+                        branch_val = spark.conf.get('spark.wap.branch')
+                    except Exception:
+                        branch_val = None
+
                 for stmt in sql_texts:
-                    logger.info(f"Executing SQL: {stmt}")
-                    spark.sql(stmt).collect()
+                    rendered = stmt
+                    if branch_val:
+                        rendered = rendered.replace('${WAP_BRANCH}', branch_val)
+                    logger.info(f"Executing SQL: {rendered}")
+                    spark.sql(rendered).collect()
                 logger.info("✅ Completed Spark SQL execution mode")
                 sys.exit(0)
             except Exception as e:

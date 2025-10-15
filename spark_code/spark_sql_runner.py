@@ -25,6 +25,7 @@ from typing import List, Dict, Any
 from utils.logging import get_logger
 from utils.spark import create_spark
 from utils.sql_reader import read_sql_file
+import os
 from utils.sql_parser import parse_sql_statements
 from utils.sql_executor import execute_statements, save_results
 
@@ -56,6 +57,14 @@ def execute_sql_file_wrapper(
         sql_content = read_file()
     else:
         sql_content = read_sql_file(spark, file_path)
+    # Substitute branch placeholder
+    branch_val = None
+    try:
+        branch_val = spark.conf.get('spark.wap.branch')
+    except Exception:
+        branch_val = os.environ.get('WAP_BRANCH')
+    if branch_val:
+        sql_content = sql_content.replace('${WAP_BRANCH}', branch_val)
     
     statements = parse_sql_statements(sql_content)
     
@@ -83,6 +92,14 @@ def execute_sql_text_wrapper(
     """Execute SQL text with multiple statements (with optional profiling)"""
     log.info("=== Executing SQL text ===")
     
+    # Substitute branch placeholder
+    branch_val = None
+    try:
+        branch_val = spark.conf.get('spark.wap.branch')
+    except Exception:
+        branch_val = os.environ.get('WAP_BRANCH')
+    if branch_val:
+        sql_text = sql_text.replace('${WAP_BRANCH}', branch_val)
     # Parse SQL statements
     statements = parse_sql_statements(sql_text)
     
