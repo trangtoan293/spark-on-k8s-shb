@@ -70,6 +70,9 @@ def _upload_via_boto3(
         # Fallbacks from environment
         endpoint = endpoint_url or os.environ.get("AWS_ENDPOINT_URL")
         region = region_name or os.environ.get("AWS_DEFAULT_REGION")
+        access_key = access_key or os.environ.get("AWS_ACCESS_KEY_ID")
+        secret_key = secret_key or os.environ.get("AWS_SECRET_ACCESS_KEY")
+        session_token = session_token or os.environ.get("AWS_SESSION_TOKEN")
 
         client_kwargs = {}
         if endpoint:
