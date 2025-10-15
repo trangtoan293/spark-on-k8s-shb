@@ -69,7 +69,24 @@ def run_dbt_subprocess(dbt_command, dbt_args):
     try:
         cmd = [dbt_command] + dbt_args
         logger.info(f"🚀 Running command via subprocess: {' '.join(cmd)}")
-        
+
+        # Ensure subprocess SparkSession honors WAP by injecting spark.wap.branch
+        env = os.environ.copy()
+        branch_val = env.get('WAP_BRANCH')
+        if branch_val:
+            existing = (env.get('PYSPARK_SUBMIT_ARGS') or '').strip()
+            # Insert conf before trailing 'pyspark-shell' when present, else append with it
+            if existing.endswith('pyspark-shell'):
+                env['PYSPARK_SUBMIT_ARGS'] = existing.replace(
+                    'pyspark-shell', f"--conf spark.wap.branch={branch_val} pyspark-shell"
+                )
+            else:
+                sep = ' ' if existing else ''
+                env['PYSPARK_SUBMIT_ARGS'] = f"{existing}{sep}--conf spark.wap.branch={branch_val} pyspark-shell"
+            logger.info(f"🌿 Subprocess WAP enabled via PYSPARK_SUBMIT_ARGS (branch={branch_val})")
+        else:
+            logger.warning("WAP_BRANCH not set; subprocess dbt will write to 'main' unless configured elsewhere")
+
         # Run command with real-time output
         process = subprocess.Popen(
             cmd,
@@ -77,7 +94,8 @@ def run_dbt_subprocess(dbt_command, dbt_args):
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
-            universal_newlines=True
+            universal_newlines=True,
+            env=env,
         )
         
         # Print output in real-time
