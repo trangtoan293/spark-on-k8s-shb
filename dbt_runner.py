@@ -284,17 +284,24 @@ def main():
                 if not args.s3_bucket:
                     logger.error("--s3-bucket is required when --upload-artifacts is set")
                     sys.exit(1)
+                # Get credentials from CLI args or environment variables
+                access_key = args.s3_access_key_id or os.environ.get('AWS_ACCESS_KEY_ID')
+                secret_key = args.s3_secret_access_key or os.environ.get('AWS_SECRET_ACCESS_KEY')
+                session_token = args.s3_session_token or os.environ.get('AWS_SESSION_TOKEN')
+                endpoint_url = args.s3_endpoint_url or os.environ.get('AWS_ENDPOINT_URL')
+                region = args.s3_region or os.environ.get('AWS_DEFAULT_REGION')
+
                 uploaded = upload_dbt_artifacts(
                     bucket=args.s3_bucket,
                     prefix=args.s3_prefix or '',
                     project_dir=dbt_project_dir,
                     target_dir=effective_target_dir,
                     logs_dir=effective_logs_dir,
-                    endpoint_url=args.s3_endpoint_url,
-                    region_name=args.s3_region,
-                    access_key=args.s3_access_key_id,
-                    secret_key=args.s3_secret_access_key,
-                    session_token=args.s3_session_token,
+                    endpoint_url=endpoint_url,
+                    region_name=region,
+                    access_key=access_key,
+                    secret_key=secret_key,
+                    session_token=session_token,
                     verify_ssl=(not args.s3_no_verify_ssl),
                 )
                 if uploaded:
@@ -320,17 +327,24 @@ def main():
                     if not args.s3_bucket:
                         logger.error("--s3-bucket is required when --upload-artifacts is set")
                         sys.exit(1)
+                    # Get credentials from CLI args or environment variables
+                    access_key = args.s3_access_key_id or os.environ.get('AWS_ACCESS_KEY_ID')
+                    secret_key = args.s3_secret_access_key or os.environ.get('AWS_SECRET_ACCESS_KEY')
+                    session_token = args.s3_session_token or os.environ.get('AWS_SESSION_TOKEN')
+                    endpoint_url = args.s3_endpoint_url or os.environ.get('AWS_ENDPOINT_URL')
+                    region = args.s3_region or os.environ.get('AWS_DEFAULT_REGION')
+
                     uploaded = upload_dbt_artifacts(
                         bucket=args.s3_bucket,
                         prefix=args.s3_prefix or '',
                         project_dir=dbt_project_dir,
                         target_dir=effective_target_dir,
                         logs_dir=effective_logs_dir,
-                        endpoint_url=args.s3_endpoint_url,
-                        region_name=args.s3_region,
-                        access_key=args.s3_access_key_id,
-                        secret_key=args.s3_secret_access_key,
-                        session_token=args.s3_session_token,
+                        endpoint_url=endpoint_url,
+                        region_name=region,
+                        access_key=access_key,
+                        secret_key=secret_key,
+                        session_token=session_token,
                         verify_ssl=(not args.s3_no_verify_ssl),
                     )
                     if uploaded:
