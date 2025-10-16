@@ -70,22 +70,48 @@ def run_dbt_subprocess(dbt_command, dbt_args):
         cmd = [dbt_command] + dbt_args
         logger.info(f"🚀 Running command via subprocess: {' '.join(cmd)}")
 
-        # Ensure subprocess SparkSession honors WAP by injecting spark.wap.branch
+        # Ensure subprocess SparkSession honors WAP and Iceberg by injecting critical Spark confs
         env = os.environ.copy()
         branch_val = env.get('WAP_BRANCH')
+        submit_confs = {}
+        # 1) Harvest current Spark confs from parent (driver) session
+        try:
+            from pyspark.sql import SparkSession
+            parent_spark = SparkSession.builder.getOrCreate()
+            for k, v in parent_spark.sparkContext.getConf().getAll():
+                # whitelist essential configs for Iceberg + IO + catalogs
+                if (
+                    k.startswith('spark.sql.catalog.') or
+                    k.startswith('spark.hadoop.fs.s3a.') or
+                    k in (
+                        'spark.sql.extensions',
+                        'spark.sql.defaultCatalog',
+                        'spark.hadoop.hive.metastore.uris',
+                        'spark.sql.warehouse.dir',
+                        'spark.serializer',
+                        'spark.sql.adaptive.enabled',
+                        'spark.sql.adaptive.coalescePartitions.enabled',
+                    )
+                ):
+                    submit_confs[k] = v
+        except Exception as e:
+            logger.warning(f"Could not harvest parent Spark confs: {e}")
+
+        # 2) Enforce WAP branch override
         if branch_val:
-            existing = (env.get('PYSPARK_SUBMIT_ARGS') or '').strip()
-            # Insert conf before trailing 'pyspark-shell' when present, else append with it
-            if existing.endswith('pyspark-shell'):
-                env['PYSPARK_SUBMIT_ARGS'] = existing.replace(
-                    'pyspark-shell', f"--conf spark.wap.branch={branch_val} pyspark-shell"
-                )
-            else:
-                sep = ' ' if existing else ''
-                env['PYSPARK_SUBMIT_ARGS'] = f"{existing}{sep}--conf spark.wap.branch={branch_val} pyspark-shell"
-            logger.info(f"🌿 Subprocess WAP enabled via PYSPARK_SUBMIT_ARGS (branch={branch_val})")
+            submit_confs['spark.wap.branch'] = branch_val
         else:
-            logger.warning("WAP_BRANCH not set; subprocess dbt will write to 'main' unless configured elsewhere")
+            logger.warning("WAP_BRANCH not set; subprocess dbt may write to 'main' if not otherwise configured")
+
+        # 3) Build PYSPARK_SUBMIT_ARGS
+        conf_args = ' '.join([f"--conf {k}={v}" for k, v in submit_confs.items()])
+        existing = (env.get('PYSPARK_SUBMIT_ARGS') or '').strip()
+        if existing.endswith('pyspark-shell'):
+            env['PYSPARK_SUBMIT_ARGS'] = existing.replace('pyspark-shell', f"{conf_args} pyspark-shell")
+        else:
+            sep = ' ' if existing else ''
+            env['PYSPARK_SUBMIT_ARGS'] = f"{existing}{sep}{conf_args} pyspark-shell".strip()
+        logger.info("🌿 Subprocess Spark configured via PYSPARK_SUBMIT_ARGS with WAP + Iceberg confs")
 
         # Run command with real-time output
         process = subprocess.Popen(
