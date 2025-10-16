@@ -103,15 +103,14 @@ def run_dbt_subprocess(dbt_command, dbt_args):
         else:
             logger.warning("WAP_BRANCH not set; subprocess dbt may write to 'main' if not otherwise configured")
 
-        # 3) Build PYSPARK_SUBMIT_ARGS
-        conf_args = ' '.join([f"--conf {k}={v}" for k, v in submit_confs.items()])
+        # 3) Build PYSPARK_SUBMIT_ARGS WITHOUT 'pyspark-shell' to avoid auto-creating a SparkContext (SPARK-2243)
+        conf_args = ' '.join([f"--conf {k}={v}" for k, v in submit_confs.items()]).strip()
         existing = (env.get('PYSPARK_SUBMIT_ARGS') or '').strip()
-        if existing.endswith('pyspark-shell'):
-            env['PYSPARK_SUBMIT_ARGS'] = existing.replace('pyspark-shell', f"{conf_args} pyspark-shell")
-        else:
-            sep = ' ' if existing else ''
-            env['PYSPARK_SUBMIT_ARGS'] = f"{existing}{sep}{conf_args} pyspark-shell".strip()
-        logger.info("🌿 Subprocess Spark configured via PYSPARK_SUBMIT_ARGS with WAP + Iceberg confs")
+        # Strip any accidental 'pyspark-shell' from existing
+        existing = existing.replace('pyspark-shell', '').strip()
+        sep = ' ' if existing and conf_args else ''
+        env['PYSPARK_SUBMIT_ARGS'] = f"{existing}{sep}{conf_args}".strip()
+        logger.info("🌿 Subprocess Spark configured via PYSPARK_SUBMIT_ARGS (no pyspark-shell) with WAP + Iceberg confs")
 
         # Run command with real-time output
         process = subprocess.Popen(
