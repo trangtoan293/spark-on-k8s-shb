@@ -88,8 +88,7 @@ models:
         "hive.engine.enabled": "true"
         "read.parquet.vectorization.enabled": "true"
         "read.parquet.vectorization.batch-size": "10000"
-      +pre-hook:
-        - "SET spark.wap.branch='{{ env_var('WAP_BRANCH') }}'"
+      +pre-hook: "SET spark.wap.branch='{{ env_var('WAP_BRANCH') }}'"
 
 seeds:
   ktl_dbt:
