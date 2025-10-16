@@ -63,8 +63,18 @@ def _expand_custom_statements(statements: list, spark) -> list:
                 raise ValueError(f"Branch '{branch}' not found in {table}.refs")
             snapshot_id = sid_rows[0][0]
             catalog = table.split('.')[0]
-            expanded.append(f"CALL {catalog}.system.cherrypick_snapshot(table => '{table}', snapshot_id => {snapshot_id})")
-            log.info(f"Expanded CHERRYPICK to snapshot_id={snapshot_id} for {table}")
+            # If snapshot already in main history, treat as no-op to avoid CherrypickAncestorCommitException
+            try:
+                in_hist = spark.sql(f"SELECT 1 FROM {table}.history WHERE snapshot_id = {snapshot_id} LIMIT 1").collect()
+            except Exception as e:
+                log.warning(f"Could not check history for {table}: {e}")
+                in_hist = []
+            if in_hist:
+                log.info(f"CHERRYPICK skipped: snapshot {snapshot_id} already ancestor in {table} history")
+                expanded.append("SELECT 1")
+            else:
+                expanded.append(f"CALL {catalog}.system.cherrypick_snapshot(table => '{table}', snapshot_id => {snapshot_id})")
+                log.info(f"Expanded CHERRYPICK to snapshot_id={snapshot_id} for {table}")
         else:
             expanded.append(stmt)
     return expanded
