@@ -63,7 +63,7 @@ def _expand_custom_statements(statements: list, spark) -> list:
                 raise ValueError(f"Branch '{branch}' not found in {table}.refs")
             snapshot_id = sid_rows[0][0]
             catalog = table.split('.')[0]
-            expanded.append(f"CALL {catalog}.system.cherrypick(table => '{table}', snapshot_id => {snapshot_id})")
+            expanded.append(f"CALL {catalog}.system.cherrypick_snapshot(table => '{table}', snapshot_id => {snapshot_id})")
             log.info(f"Expanded CHERRYPICK to snapshot_id={snapshot_id} for {table}")
         else:
             expanded.append(stmt)
@@ -143,10 +143,10 @@ def execute_sql_text_wrapper(
     if profiler:
         @profiler.profile_function("execute_statements")
         def exec_stmts():
-            return execute_statements(spark, statements, continue_on_error, default_database)
+            return execute_statements(spark, _expand_custom_statements(statements, spark), continue_on_error, default_database)
         return exec_stmts()
     else:
-        return execute_statements(spark, statements, continue_on_error, default_database)
+        return execute_statements(spark, _expand_custom_statements(statements, spark), continue_on_error, default_database)
 
 def main():
     """Main function - simplified argument handling"""
