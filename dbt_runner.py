@@ -70,47 +70,20 @@ def run_dbt_subprocess(dbt_command, dbt_args):
         cmd = [dbt_command] + dbt_args
         logger.info(f"🚀 Running command via subprocess: {' '.join(cmd)}")
 
-        # Ensure subprocess SparkSession honors WAP and Iceberg by injecting critical Spark confs
+        # Ensure subprocess SparkSession honors WAP, but avoid creating any SparkContext in parent.
+        # Inject ONLY spark.wap.branch (the SparkApplication already has full Iceberg conf from transform.yaml).
         env = os.environ.copy()
         branch_val = env.get('WAP_BRANCH')
-        submit_confs = {}
-        # 1) Harvest current Spark confs from parent (driver) session
-        try:
-            from pyspark.sql import SparkSession
-            parent_spark = SparkSession.builder.getOrCreate()
-            for k, v in parent_spark.sparkContext.getConf().getAll():
-                # whitelist essential configs for Iceberg + IO + catalogs
-                if (
-                    k.startswith('spark.sql.catalog.') or
-                    k.startswith('spark.hadoop.fs.s3a.') or
-                    k in (
-                        'spark.sql.extensions',
-                        'spark.sql.defaultCatalog',
-                        'spark.hadoop.hive.metastore.uris',
-                        'spark.sql.warehouse.dir',
-                        'spark.serializer',
-                        'spark.sql.adaptive.enabled',
-                        'spark.sql.adaptive.coalescePartitions.enabled',
-                    )
-                ):
-                    submit_confs[k] = v
-        except Exception as e:
-            logger.warning(f"Could not harvest parent Spark confs: {e}")
-
-        # 2) Enforce WAP branch override
-        if branch_val:
-            submit_confs['spark.wap.branch'] = branch_val
-        else:
-            logger.warning("WAP_BRANCH not set; subprocess dbt may write to 'main' if not otherwise configured")
-
-        # 3) Build PYSPARK_SUBMIT_ARGS WITHOUT 'pyspark-shell' to avoid auto-creating a SparkContext (SPARK-2243)
-        conf_args = ' '.join([f"--conf {k}={v}" for k, v in submit_confs.items()]).strip()
         existing = (env.get('PYSPARK_SUBMIT_ARGS') or '').strip()
-        # Strip any accidental 'pyspark-shell' from existing
         existing = existing.replace('pyspark-shell', '').strip()
-        sep = ' ' if existing and conf_args else ''
-        env['PYSPARK_SUBMIT_ARGS'] = f"{existing}{sep}{conf_args}".strip()
-        logger.info("🌿 Subprocess Spark configured via PYSPARK_SUBMIT_ARGS (no pyspark-shell) with WAP + Iceberg confs")
+        if branch_val:
+            add = f"--conf spark.wap.branch={branch_val}"
+            sep = ' ' if existing else ''
+            env['PYSPARK_SUBMIT_ARGS'] = f"{existing}{sep}{add}".strip()
+            logger.info(f"🌿 Subprocess WAP enabled via PYSPARK_SUBMIT_ARGS (no pyspark-shell) branch={branch_val}")
+        else:
+            env['PYSPARK_SUBMIT_ARGS'] = existing
+            logger.warning("WAP_BRANCH not set; subprocess dbt may write to 'main' if not otherwise configured")
 
         # Run command with real-time output
         process = subprocess.Popen(
