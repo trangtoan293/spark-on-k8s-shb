@@ -39,6 +39,36 @@ from spark_tuning import (
 
 log = get_logger(__name__)
 
+def _expand_custom_statements(statements: list, spark) -> list:
+    """Expand custom directives into executable SQL.
+    Supported:
+      - CHERRYPICK <table> <branch>
+    """
+    expanded = []
+    for stmt in statements:
+        raw = stmt.strip().rstrip(";")
+        upper = raw.upper()
+        if upper.startswith("CHERRYPICK "):
+            parts = raw.split()
+            if len(parts) < 3:
+                raise ValueError(f"Invalid CHERRYPICK syntax: {stmt}")
+            table = parts[1]
+            branch = parts[2].strip("'\"")
+            try:
+                sid_rows = spark.sql(f"SELECT snapshot_id FROM {table}.refs WHERE name = '{branch}'").collect()
+            except Exception as e:
+                log.error(f"Failed to read refs for table {table}: {e}")
+                raise
+            if not sid_rows:
+                raise ValueError(f"Branch '{branch}' not found in {table}.refs")
+            snapshot_id = sid_rows[0][0]
+            catalog = table.split('.')[0]
+            expanded.append(f"CALL {catalog}.system.cherrypick(table => '{table}', snapshot_id => {snapshot_id})")
+            log.info(f"Expanded CHERRYPICK to snapshot_id={snapshot_id} for {table}")
+        else:
+            expanded.append(stmt)
+    return expanded
+
 def execute_sql_file_wrapper(
     spark,
     file_path: str,
@@ -77,10 +107,10 @@ def execute_sql_file_wrapper(
     if profiler:
         @profiler.profile_function("execute_statements")
         def exec_stmts():
-            return execute_statements(spark, statements, continue_on_error, default_database)
+            return execute_statements(spark, _expand_custom_statements(statements, spark), continue_on_error, default_database)
         return exec_stmts()
     else:
-        return execute_statements(spark, statements, continue_on_error, default_database)
+        return execute_statements(spark, _expand_custom_statements(statements, spark), continue_on_error, default_database)
 
 
 def execute_sql_text_wrapper(

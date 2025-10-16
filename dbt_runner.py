@@ -153,11 +153,6 @@ def main():
                         help='Optional AWS session token')
     parser.add_argument('--s3-no-verify-ssl', action='store_true',
                         help='Disable SSL verification for S3/MinIO (useful for self-signed)')
-    # Spark SQL execution mode (for WAP control SQL)
-    parser.add_argument('--execute-sql', default=None,
-                        help='Execute a single Spark SQL string and exit (use for WAP control SQL)')
-    parser.add_argument('--execute-sql-file', default=None,
-                        help='Path to a file containing Spark SQL statements to execute and exit')
     # Note: uploads run sequentially; no concurrency settings needed
     
     # Parse known args to separate our flags from dbt args
@@ -275,47 +270,7 @@ def main():
     if args.use_subprocess:
         logger.info(f"📋 Using command: {args.dbt_command}")
     
-    # Do NOT create a SparkSession for dbt mode; we will create one only when executing raw SQL mode.
-    spark = None
-    
     try:
-        # If SQL execution mode is requested, run it early and exit.
-        if args.execute_sql or args.execute_sql_file:
-            try:
-                from pyspark.sql import SparkSession
-                spark = SparkSession.builder.getOrCreate()
-                sql_texts = []
-                if args.execute_sql:
-                    sql_texts.append(args.execute_sql)
-                if args.execute_sql_file:
-                    if not os.path.exists(args.execute_sql_file):
-                        logger.error(f"SQL file not found: {args.execute_sql_file}")
-                        sys.exit(1)
-                    with open(args.execute_sql_file, 'r') as f:
-                        content = f.read()
-                        # Split by ';\n' while keeping simple; allow multiple statements
-                        sql_texts.extend([s.strip() for s in content.split(';') if s.strip()])
-
-                # Resolve branch placeholder if provided
-                branch_val = os.environ.get('WAP_BRANCH')
-                if not branch_val:
-                    try:
-                        branch_val = spark.conf.get('spark.wap.branch')
-                    except Exception:
-                        branch_val = None
-
-                for stmt in sql_texts:
-                    rendered = stmt
-                    if branch_val:
-                        rendered = rendered.replace('${WAP_BRANCH}', branch_val)
-                    logger.info(f"Executing SQL: {rendered}")
-                    spark.sql(rendered).collect()
-                logger.info("✅ Completed Spark SQL execution mode")
-                sys.exit(0)
-            except Exception as e:
-                logger.error(f"❌ Error executing Spark SQL: {e}")
-                sys.exit(1)
-
         # Validate dbt project files
         required_files = ['dbt_project.yml', 'profiles.yml']
         for file in required_files:
