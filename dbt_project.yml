@@ -1,7 +1,7 @@
-name: 'simple_dbt_project'
+name: 'ktl_dbt'
 version: '1.0.0'
 config-version: 2
-profile: 'simple_dbt_project'
+profile: 'ktl_dbt'
 
 model-paths: ["models"]
 test-paths: ["tests"]
@@ -39,35 +39,35 @@ vars:
         dtype: timestamp
         description: 'Thời điểm dữ liệu được load từ kafka'
         source:
-          name: ktime
+          name: _cdc_extracted_at
           dtype: timestamp
 
       - target: dv_kaf_ofs
         dtype: bigint
         description: 'số offset của kafka'
         source:
-          name: koffset
+          name: CDC_SCN
           dtype: bigint
 
       - target: dv_cdc_ops
         dtype: string
         description: 'loại CDC (change data capture) bao gồm :"R"="read", "I"="insert", "U"="update" và "D"="delete"'
         source:
-          name: cdc_operation
+          name: "'I'"
           dtype: string
 
       - target: dv_src_ldt
         dtype: timestamp
         description: 'Thời điểm dữ liệu được insert từ source'
         source:
-          name: optime
+          name: _cdc_extracted_at
           dtype: timestamp
 
       - target: dv_src_rec
         dtype: string
         description: 'Tên bảng source của dữ liệu'
         source:
-          name: record_source
+          name: _source_table
           dtype: string
 
       - target: dv_ldt
@@ -77,36 +77,12 @@ vars:
           name: current_timestamp()
           dtype: timestamp
 
-  catalog_table:
-    ref_group:
-      - name: mdm_phone_number_prefix
-        table: integration_demo.MDM_PHONE_NUMBER_PREFIX
-        column_old_phone: old_phone
-        column_new_phone: new_phone
-      
-      - name: mdm_catalog_category
-        table: integration_demo.mdm_catalog_category
-        column_original_value: original_value
-        column_standard_value: standard_value
-        column_category_type: category_type
-        column_source: source
-
 models:
   ktl_dbt:
     # Config indicated by + and applies to all files under models/example/
-    integration_demo:
+    integration_vnpost:
+      +is_streaming: false
       +materialized: incremental
-      +file_format: iceberg
-      +tblproperties:
-        "hive.engine.enabled": "true"
-        "read.parquet.vectorization.enabled": "true"
-        "read.parquet.vectorization.batch-size": "10000"
-
-      biz_vault:
-          +materialized: table
-
-    mdm:
-      +materialized: table
       +file_format: iceberg
       +tblproperties:
         "hive.engine.enabled": "true"
@@ -115,5 +91,5 @@ models:
 
 seeds:
   ktl_dbt:
-    +schema: source
+    +schema: landing
     +file_format: iceberg

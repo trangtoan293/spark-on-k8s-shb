@@ -1,0 +1,11 @@
+{{ config(
+    materialized='incremental',
+    file_format='iceberg',
+    incremental_strategy='merge'
+) }}
+
+{%- set model = dv_config('sat_card') -%}
+{%- set dv_system = var("dv_system") -%}
+
+
+{{ ktl_autovault.sat_snp_transform(model=model, dv_system=dv_system) }}

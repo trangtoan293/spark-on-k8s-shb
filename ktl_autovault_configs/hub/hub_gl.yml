@@ -1,0 +1,19 @@
+source_schema: landing
+source_table: gl_poc_spark
+target_entity_type: hub
+target_schema: integration
+target_table: hub_gl
+description: ''
+collision_code: demo
+columns:
+- target: dv_hkey_hub_gl
+  key_type: hash_key_hub
+  dtype: string
+  source:
+  - AC_NO
+- target: AC_NO
+  key_type: biz_key
+  dtype: string
+  source:
+    name: AC_NO
+    dtype: string

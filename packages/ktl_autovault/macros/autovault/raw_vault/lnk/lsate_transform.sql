@@ -30,7 +30,7 @@
                 {%- endif %}
         ),
         
-        {%- if ktl_autovault.is_streaming() or is_incremental() %}
+        {%- if is_incremental() %}
 
         cte_current_effectivity as (
             select
@@ -155,7 +155,7 @@
             where lsate.{{ hkey_lnk_name }} = lnk.{{ hkey_lnk_name }}
         )
 
-    {%- if ktl_autovault.is_streaming() or is_incremental() %}
+    {%- if is_incremental() %}
 
     union all
     

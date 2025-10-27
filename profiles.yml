@@ -1,4 +1,4 @@
-simple_dbt_project:
+ktl_dbt:
   target: dev
   outputs:
     dev:
