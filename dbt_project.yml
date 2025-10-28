@@ -16,12 +16,12 @@ vars:
   # cob_date: cob date value that raw vault models will use to query run_time as incre_end_date, and last_run_time as incre_start_date for incremental load
   #           if not specify, query the latest run_time
   # if not specify ref_eod_table, use 3 vars initial_date, incre_start_date, incre_end_date instead
-  ref_eod_table: vw_ref_eod
-  initial_cob_date: "2024-11-04"
+  # ref_eod_table: vw_ref_eod
+  # initial_cob_date: "2025-11-04"
   # cob_date: 
 
   # start date of raw vault batch initial load
-  # initial_date: "2024-01-01"
+  initial_date: "2026-11-01"
   
   # start date value for EOD (default: no start date or 1900-01-01)
   # incre_start_date: "2020-01-01"
