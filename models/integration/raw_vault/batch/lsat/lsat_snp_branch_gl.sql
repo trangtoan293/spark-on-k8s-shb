@@ -1,3 +1,7 @@
+{{ config(
+    materialized='table',
+    file_format='iceberg'
+) }}
 
 {%- set model = dv_config('lsat_branch_gl') -%}
 {%- set dv_system = var("dv_system") -%}

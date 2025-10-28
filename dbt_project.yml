@@ -80,9 +80,9 @@ vars:
 models:
   ktl_dbt:
     # Config indicated by + and applies to all files under models/example/
-    integration_vnpost:
+    integration:
       +is_streaming: false
-      +materialized: incremental
+      +materialized: table
       +file_format: iceberg
       +tblproperties:
         "hive.engine.enabled": "true"

@@ -1,7 +1,6 @@
 {{ config(
-    materialized='incremental',
-    file_format='iceberg',
-    incremental_strategy='merge'
+    materialized='table',
+    file_format='iceberg'
 ) }}
 
 {%- set model = dv_config('sat_branch') -%}

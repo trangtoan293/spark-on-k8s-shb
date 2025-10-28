@@ -1,4 +1,7 @@
-
+{{ config(
+    materialized='table',
+    file_format='iceberg'
+) }}
 {%- set model = dv_config('sat_branch') -%}
 {%- set dv_system = var("dv_system") -%}
 

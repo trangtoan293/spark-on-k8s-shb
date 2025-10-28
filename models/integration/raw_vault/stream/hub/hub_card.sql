@@ -1,4 +1,10 @@
 
+{{ config(
+    materialized='incremental',
+    file_format='iceberg',
+    incremental_strategy='merge'
+) }}
+
 {%- set hub_card  = dv_config('hub_card') -%}
 {%- set dv_system = var("dv_system") -%}
 

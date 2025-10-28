@@ -1,4 +1,7 @@
-
+{{ config(
+    materialized='table',
+    file_format='iceberg'
+) }}
 {%- set model = dv_config('sat_card') -%}
 {%- set dv_system = var("dv_system") -%}
 
