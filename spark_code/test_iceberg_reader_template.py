@@ -1,8 +1,15 @@
 import pytest
 
-pytest.importorskip("pyspark", reason="pyspark is required to test transform_data")
+from __future__ import annotations
 
-from pyspark.sql import SparkSession
+import argparse
+from typing import Optional
+
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.functions import col, monotonically_increasing_id
+from pyspark.sql.types import DoubleType
+from pyspark.sql.functions import udf
+pytest.importorskip("pyspark", reason="pyspark is required to test transform_data")
 
 import sys
 import subprocess
@@ -29,16 +36,6 @@ Usage:
     python iceberg_reader_template.py --table catalog.database.table_name --result-table catalog.database.output_table
 """
 
-from __future__ import annotations
-
-import argparse
-import sys
-from typing import Optional
-
-from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql.functions import col, monotonically_increasing_id
-from pyspark.sql.types import DoubleType
-from pyspark.sql.functions import udf
 
 from rapidfuzz import fuzz  
 
