@@ -1,13 +1,3 @@
-{{
-    config(
-        pre_hook = [
-            "{% if adapter.get_relation(this.database, this.schema, this.identifier) is not none %}"
-            "  DROP VIEW IF EXISTS {{ this }}",
-            "  DROP TABLE IF EXISTS {{ this }} PURGE",
-            "{% endif %}"
-        ]
-    )
-}}
 {%- set project = 'KTLMDM' -%}
 {%- set product = 'INDIVIDUAL' -%}
 {%- set source = 'SHB' -%}
