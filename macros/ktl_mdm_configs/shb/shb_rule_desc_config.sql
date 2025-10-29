@@ -7,12 +7,12 @@ cleansing:
   - code: CL1
     description: 'Standardize QUOC_TICH via Danhmuc_QuocGia: map MA_QG/QUOC_GIA/abbr to TEN_QG/TEN_VT/full; keep original if not mapped'
     rule_template: cleantp_replace_category
-    catalog_condition: var('shb_quoc_tich_catalog')
+    catalog_condition: "{{ var('shb_quoc_tich_catalog') }}"
     column_condition: 'QUOC_TICH:quoc_tich'
   - code: CL2
     description: 'Standardize LOAI_GTTT via Danhmuc_Loai_GTTT: map old values (GTTT) to new standard (LOAI_GTTT); keep original if not mapped'
     rule_template: cleantp_replace_category
-    catalog_condition: var('shb_loai_gttt_catalog')
+    catalog_condition: "{{ var('shb_loai_gttt_catalog') }}"
     column_condition: 'LOAI_GTTT:loai_gttt'
   - code: CL3
     description: 'Remove special characters from NOI_CAP_GTTT (keep letters and safe punctuation: _ -,.;)'
@@ -63,7 +63,7 @@ validate:
   - code: V8
     description: 'QUOC_TICH must not be in special-control list per Danhmuc_QuocGia where KIEM_SOAT = 1'
     rule_template: check_invalid_category
-    catalog_condition: var('shb_special_nationality_catalog')
+    catalog_condition: "{{ var('shb_special_nationality_catalog') }}"
     warning_null: NO
 
 match:
@@ -88,7 +88,7 @@ merge:
   - code: M3
     description: 'Merge address: prefer CARD_ADDR when available, else CORE_CIF RES_ADD_1'
     rule_template: merge_address
-    source_address_table: var('shb_card_addr_table')
+    source_address_table: "{{ var('shb_card_addr_table') }}"
     target_address_column: RES_ADD_1
   - code: M4
     description: 'Merge duplicates: prefer records without invalids; then lowest error count; then individual; then newest CIF'
