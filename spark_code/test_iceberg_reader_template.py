@@ -1,3 +1,13 @@
+import sys
+import subprocess
+
+def _ensure_pytest():
+    try:
+        import pytest  # noqa: F401
+    except Exception:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pytest"])
+
+_ensure_pytest()
 
 import pytest
 import argparse
@@ -8,15 +18,11 @@ from pyspark.sql.functions import col, monotonically_increasing_id
 from pyspark.sql.types import DoubleType
 from pyspark.sql.functions import udf
 
-import sys
-import subprocess
-
 def _ensure_rapidfuzz():
     try:
         import rapidfuzz
     except Exception:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "rapidfuzz", "pytest"])
-
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "rapidfuzz"])
 
 _ensure_rapidfuzz()
 
