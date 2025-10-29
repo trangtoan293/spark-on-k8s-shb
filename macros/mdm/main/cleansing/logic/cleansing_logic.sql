@@ -8,7 +8,19 @@
 
 {# logic replace character ---> blank using regex pattern #}
 {%- macro cleansing_logic_remove_character(obj, character) -%}
-    REGEXP_REPLACE({{obj}}, {{character}}, '') AS {{obj}}
+    {%- if character is none -%}
+        {{obj}} AS {{obj}}
+    {%- else -%}
+        {%- set pattern = character | replace("'", "''") -%}
+        {%- if pattern | length == 0 -%}
+            {{obj}} AS {{obj}}
+        {%- else -%}
+            {%- if pattern[0] != "'" -%}
+                {%- set pattern = "'" ~ pattern ~ "'" -%}
+            {%- endif -%}
+            REGEXP_REPLACE({{obj}}, {{pattern}}, '') AS {{obj}}
+        {%- endif -%}
+    {%- endif -%}
 {%- endmacro -%}
 
 {# logic replace first [+84,84] --- > 0 #}
