@@ -38,6 +38,10 @@
     {%- for item in rule_apply -%}
         {%- set info_rule_invalid = selected_info_rule_invalid(rule_code= item.get('name'))-%}
 
+        {%- if info_rule_invalid is none -%}
+            {%- continue -%}
+        {%- endif -%}
+
         {# get column apply rule available in metdata column #}
         {%- set lst_col_available = ktl_mdm_get_column_available(lst_column_model, item.get('list_column')) -%}
 
