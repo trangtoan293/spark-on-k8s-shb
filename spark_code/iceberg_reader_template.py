@@ -10,8 +10,6 @@ Usage:
     python iceberg_reader_template.py --table catalog.database.table_name --result-table catalog.database.output_table
 """
 
-from __future__ import annotations
-
 import argparse
 import sys
 from typing import Optional
