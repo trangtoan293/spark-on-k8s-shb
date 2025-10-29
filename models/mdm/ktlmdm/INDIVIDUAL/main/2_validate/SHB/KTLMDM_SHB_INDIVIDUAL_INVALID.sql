@@ -1,7 +1,8 @@
 {{
     config(
         pre_hook = [
-            "DROP TABLE {{this}} purge",
+            "DROP VIEW IF EXISTS {{ this }}",
+            "DROP TABLE IF EXISTS {{ this }} PURGE"
         ]
     )
 }}
