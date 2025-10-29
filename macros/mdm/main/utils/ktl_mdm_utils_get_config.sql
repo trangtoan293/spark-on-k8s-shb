@@ -11,7 +11,11 @@
 
 {# get condition for column apply rule CL3 #}
 {%- macro ktl_mdm_get_condition_for_col(column_apply, dict)-%}
-    {%- set list_condition = dict.get('column_condition').split(",") -%}
+    {%- set column_condition = dict.get('column_condition') -%}
+    {%- if column_condition is none -%}
+        {{ return(none) }}
+    {%- endif -%}
+    {%- set list_condition = column_condition.split(",") -%}
     {%- for ele_col in list_condition -%}
         {%- if column_apply in ele_col -%}
             {%- set condition_for_col = ele_col.split(":") -%}
