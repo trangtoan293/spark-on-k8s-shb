@@ -74,6 +74,9 @@
 
     {%- for column in lst_column_apply -%}
         {%- set condition_type = ktl_mdm_get_condition_for_col(column_apply = column, dict = rule_info) -%}
+        {%- if condition_type is none -%}
+            {%- continue -%}
+        {%- endif -%}
 
         {%- set _count.value = _count.value + 1 -%} 
         {%- set _as = 'a'~_count.value -%}
