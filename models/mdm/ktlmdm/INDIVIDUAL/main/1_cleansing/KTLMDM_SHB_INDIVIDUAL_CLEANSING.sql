@@ -1,7 +1,7 @@
 {%- set project = 'KTLMDM' -%}
 {%- set product = 'INDIVIDUAL' -%}
 {%- set source = 'SHB' -%}
-{%- set metadata_conf = ktl_mdm_utils_metadata_get_metadata_config(project_name = project, product = product, source = source, default = 'shb') -%}
+{%- set metadata_conf = ktl_mdm_utils_metadata_get_metadata_config(project_name = project, product_name = product, source = source, default = 'shb') -%}
 {%- set lst_column_metadata = ktl_mdm_utils_metadata_get_metadata_column_lst(metadata_conf) -%}
 {%- set lst_column_metadata_cdt = ktl_mdm_utils_metadata_get_cdt_column_lst(metadata_conf) -%}
 {%- set lst_column_model = lst_column_metadata + lst_column_metadata_cdt -%}
