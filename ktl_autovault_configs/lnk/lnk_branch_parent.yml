@@ -18,7 +18,7 @@ columns:
     dtype: string
     source:
       - POS_CD
-  - target: dv_hkey_hub_branch
+  - target: dv_hkey_hub_branch_parent
     key_type: hash_key_hub
     parent: hub_branch
     dtype: string
