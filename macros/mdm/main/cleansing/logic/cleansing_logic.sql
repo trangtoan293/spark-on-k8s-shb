@@ -6,21 +6,9 @@
     TO_DATE({{obj}}, '{{character}}') AS {{obj}}
 {%- endmacro -%}
 
-{# logic replace character ---> blank #}
+{# logic replace character ---> blank using regex pattern #}
 {%- macro cleansing_logic_remove_character(obj, character) -%}
-    
-    {%- set pattern_list = character | replace('[', '') | replace(']', '') -%}
-
-    {% set ns = namespace(replace_stmt=obj) %}
-    
-    {%- for ele in pattern_list -%}
-        {%- set ns.replace_stmt = "REPLACE(" + ns.replace_stmt + ", '" + ele + "', '')" -%}
-    {%- endfor -%}
-    {%- set finish -%}
-        {{ ns.replace_stmt }} AS {{obj}}
-    {%- endset -%}
-    
-    {{ finish }}
+    REGEXP_REPLACE({{obj}}, {{character}}, '') AS {{obj}}
 {%- endmacro -%}
 
 {# logic replace first [+84,84] --- > 0 #}
