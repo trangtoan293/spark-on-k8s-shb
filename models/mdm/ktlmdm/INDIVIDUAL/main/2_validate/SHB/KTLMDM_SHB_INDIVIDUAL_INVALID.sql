@@ -1,8 +1,10 @@
 {{
     config(
         pre_hook = [
-            "DROP VIEW IF EXISTS {{ this }}",
-            "DROP TABLE IF EXISTS {{ this }} PURGE"
+            "{% if adapter.get_relation(this.database, this.schema, this.identifier) is not none %}"
+            "  DROP VIEW IF EXISTS {{ this }}",
+            "  DROP TABLE IF EXISTS {{ this }} PURGE",
+            "{% endif %}"
         ]
     )
 }}
