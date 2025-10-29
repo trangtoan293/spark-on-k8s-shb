@@ -7,7 +7,6 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, monotonically_increasing_id
 from pyspark.sql.types import DoubleType
 from pyspark.sql.functions import udf
-pytest.importorskip("pyspark", reason="pyspark is required to test transform_data")
 
 import sys
 import subprocess
@@ -40,6 +39,7 @@ from rapidfuzz import fuzz
 
 from utils.logging import get_logger
 from utils.spark import create_spark
+pytest.importorskip("pyspark", reason="pyspark is required to test transform_data")
 
 log = get_logger(__name__)
 
