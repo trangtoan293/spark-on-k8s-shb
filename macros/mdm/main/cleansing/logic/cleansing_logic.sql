@@ -8,18 +8,10 @@
 
 {# logic replace character ---> blank using regex pattern #}
 {%- macro cleansing_logic_remove_character(obj, character) -%}
-    {%- if character is none -%}
+    {%- if character is none or character == '' -%}
         {{obj}} AS {{obj}}
     {%- else -%}
-        {%- set pattern = character | replace("'", "''") -%}
-        {%- if pattern | length == 0 -%}
-            {{obj}} AS {{obj}}
-        {%- else -%}
-            {%- if pattern[0] != "'" -%}
-                {%- set pattern = "'" ~ pattern ~ "'" -%}
-            {%- endif -%}
-            REGEXP_REPLACE({{obj}}, {{pattern}}, '') AS {{obj}}
-        {%- endif -%}
+        REGEXP_REPLACE({{obj}}, {{ character | tojson }}, '') AS {{obj}}
     {%- endif -%}
 {%- endmacro -%}
 
