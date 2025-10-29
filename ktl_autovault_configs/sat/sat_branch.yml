@@ -7,19 +7,19 @@ description: ''
 parent_table: hub_branch
 collision_code: demo
 columns:
-- target: dv_hkey_sat_branch
-  key_type: hash_key_sat
-  dtype: string
-- target: dv_hkey_hub_branch
-  key_type: hash_key_hub
-  dtype: string
-  source:
-  - POSCD
-- target: dv_hsh_dif
-  dtype: string
-  key_type: hash_diff
-- target: STAFF_NUM
-  dtype: decimal(38,18)
-  source:
-    name: STAFF_NUM
+  - target: dv_hkey_sat_branch
+    key_type: hash_key_sat
+    dtype: string
+  - target: dv_hkey_hub_branch
+    key_type: hash_key_hub
+    dtype: string
+    source:
+    - POSCD
+  - target: dv_hsh_dif
+    dtype: string
+    key_type: hash_diff
+  - target: STAFF_NUM
     dtype: decimal(38,18)
+    source:
+      name: STAFF_NUM
+      dtype: decimal(38,18)
