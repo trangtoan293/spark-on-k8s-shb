@@ -10,3 +10,5 @@ sources:
       - name: gl_slnv_spark
       - name: gl_poc_spark
       - name: ref_eod
+      - name: gl_sbv_spark
+      - name: gl_pos_spark
