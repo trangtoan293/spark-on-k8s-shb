@@ -137,33 +137,62 @@ def main():
     os.makedirs("/tmp/dbt_logs", exist_ok=True)
     logger.info("Created writable temp directories for dbt target and logs")
     
-    # Get dbt command arguments
-    dbt_args = []
+    # Build list of dbt command segments (support '--' separator)
+    raw_args = []
     skip_next = False
-    
+
     for arg in remaining_args:
         if skip_next:
             skip_next = False
             continue
-            
-        # Skip Spark-specific arguments
+
         if arg in ['driver', '--properties-file', '--class']:
             skip_next = True
             continue
-        elif arg.startswith('org.apache.spark') or arg.startswith('local://'):
+        if arg.startswith('org.apache.spark') or arg.startswith('local://'):
             continue
-        else:
-            dbt_args.append(arg)
-    
-    # Default command if no args provided
-    if not dbt_args:
-        dbt_args = ['run', '--target', 'dev']
-    
-    logger.info(f"🚀 Starting dbt with args: {dbt_args}")
+
+        raw_args.append(arg)
+
+    command_segments = []
+    current_segment = []
+
+    for arg in raw_args:
+        if arg == '--':
+            if current_segment:
+                command_segments.append(current_segment)
+                current_segment = []
+            continue
+        current_segment.append(arg)
+
+    if current_segment:
+        command_segments.append(current_segment)
+
+    if not command_segments:
+        command_segments = [['run', '--target', 'dev']]
+
+    # Normalise segments (remove redundant dbt command tokens)
+    normalised_segments = []
+    for segment in command_segments:
+        seg = segment[:]
+        if seg and seg[0] == args.dbt_command:
+            seg = seg[1:]
+        if not seg:
+            continue
+        normalised_segments.append(seg)
+
+    if not normalised_segments:
+        normalised_segments = [['run', '--target', 'dev']]
+
+    multi_command = len(normalised_segments) > 1
+
+    if multi_command and not args.use_subprocess:
+        logger.error("Multiple dbt commands detected but --use-subprocess was not provided")
+        sys.exit(1)
+
     logger.info(f"📋 Execution mode: {'subprocess' if args.use_subprocess else 'dbtRunner'}")
-    if args.use_subprocess:
-        logger.info(f"📋 Using command: {args.dbt_command}")
-    
+    logger.info(f"📋 Using command: {args.dbt_command}")
+
     # Do NOT create a SparkSession here.
     # dbt-spark will manage SparkSession/Context internally. Creating one here can
     # lead to "Only one SparkContext should be running in this JVM" (SPARK-2243).
@@ -185,22 +214,21 @@ def main():
             logger.error("Failed to install dbt dependencies")
             sys.exit(1)
         
-        # Run dbt command based on execution mode
         if args.use_subprocess:
-            # Use subprocess method
-            success = run_dbt_subprocess(args.dbt_command, dbt_args)
-            if not success:
-                sys.exit(1)
+            for idx, segment in enumerate(normalised_segments, start=1):
+                logger.info(f"🚀 Running dbt command {idx}/{len(normalised_segments)}: {' '.join(segment)}")
+                success = run_dbt_subprocess(args.dbt_command, segment)
+                if not success:
+                    sys.exit(1)
         else:
-            # Use dbtRunner method (original)
+            # dbtRunner mode only supports a single command
+            segment = normalised_segments[0]
+            logger.info(f"🚀 Running dbt command: {' '.join(segment)}")
+
             from dbt.cli.main import dbtRunner, dbtRunnerResult
             dbt = dbtRunner()
-            
-            # Run command
-            logger.info(f"🚀 Running dbt command: {' '.join(dbt_args)}")
 
-            res: dbtRunnerResult = dbt.invoke(dbt_args)
-            # inspect the results
+            res: dbtRunnerResult = dbt.invoke(segment)
             for r in res.result:
                 logger.info(f"{r.node.name}: {r.status}")
             if res.success:
