@@ -1,6 +1,3 @@
 {%- macro ktlmdm_rule_desc_config_yml() -%}
-    {%- set config_map = {
-        'KTL_MDM': shb_rule_desc_config_yml().get('KTL_MDM')
-    } -%}
-    {{ return(config_map) }}
+    {{ return(shb_rule_desc_config_yml()) }}
 {%- endmacro -%}
