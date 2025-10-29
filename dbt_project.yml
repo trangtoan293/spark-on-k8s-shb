@@ -18,6 +18,15 @@ vars:
   # if not specify ref_eod_table, use 3 vars initial_date, incre_start_date, incre_end_date instead
   ref_eod_table: vw_ref_eod
   initial_cob_date: "2024-11-04"
+  
+  # catalog table metadata for MDM cleansing rules
+  catalog_table:
+    ref_group:
+      - name: mdm_catalog_category
+        column_original_value: ORIGINAL_VALUE
+        column_standard_value: STANDARD_VALUE
+        column_category_type: CATEGORY_TYPE
+        column_source: SOURCE_SYSTEM
   # cob_date: 
 
   # start date of raw vault batch initial load
