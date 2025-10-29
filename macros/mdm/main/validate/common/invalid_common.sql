@@ -7,14 +7,14 @@
                                                   
     {%- if rule_info is not none -%}
         {%- set selected_info = {  
-            'code': rule_info['code'],  
-            'rule_template': rule_info['rule_template'],
-            'regex_pattern': rule_info['regex_pattern'],
-            'catalog_condition': rule_info['catalog_condition'],
-            'catalog_column': rule_info['catalog_column'],
-            'column_condition': rule_info['column_condition'],
-            'condition': rule_info['condition'],
-            'warning_null': rule_info['warning_null']
+            'code': rule_info.get('code'),  
+            'rule_template': rule_info.get('rule_template'),
+            'regex_pattern': rule_info.get('regex_pattern'),
+            'catalog_condition': rule_info.get('catalog_condition'),
+            'catalog_column': rule_info.get('catalog_column'),
+            'column_condition': rule_info.get('column_condition'),
+            'condition': rule_info.get('condition'),
+            'warning_null': rule_info.get('warning_null')
         } -%}  
 
         {{ return(selected_info) }}
