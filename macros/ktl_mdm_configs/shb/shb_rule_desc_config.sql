@@ -50,7 +50,8 @@ validate:
   - code: V5
     description: 'LOAI_GTTT must belong to allowed set per Danhmuc_Loai_GTTT (values not in the catalog are invalid)'
     rule_template: check_invalid_category
-    catalog_condition: var('shb_loai_gttt_catalog')
+    catalog_condition: "{{ ref('Danhmuc_Loai_GTTT') }}"
+    column_condition: 'LOAI_GTTT:loai_gttt'
     warning_null: NO
   - code: V6
     description: 'For CCCD/THE CAN CUOC, PASS_E_DT must equal PASS_I_DT + 15 years'
@@ -59,11 +60,12 @@ validate:
   - code: V7
     description: 'PASS_I_DT must be after D_O_B and not after CIF open date (if provided)'
     rule_template: check_legal_id_range_datetime
-    column_condition: 'KDI7:{{ var("shb_cif_open_date_col") }}'
+    column_condition: "KDI7:{% if var('shb_cif_open_date_col') is not none %}{{ var('shb_cif_open_date_col') }}{% else %}NULL{% endif %}"
   - code: V8
     description: 'QUOC_TICH must not be in special-control list per Danhmuc_QuocGia where KIEM_SOAT = 1'
     rule_template: check_invalid_category
-    catalog_condition: "{{ var('shb_special_nationality_catalog') }}"
+    catalog_condition: "{{ ref('Danhmuc_QuocGia') }}"
+    column_condition: 'QUOC_TICH:quoc_tich'
     warning_null: NO
 
 match:
