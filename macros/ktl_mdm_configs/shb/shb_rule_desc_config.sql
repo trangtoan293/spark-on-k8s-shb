@@ -57,10 +57,12 @@ validate:
     description: 'For CCCD/THE CAN CUOC, PASS_E_DT must equal PASS_I_DT + 15 years'
     rule_template: check_active_datetime_legal_id
     condition: '15:0'
+{% if var('shb_cif_open_date_col') %}
   - code: V7
     description: 'PASS_I_DT must be after D_O_B and not after CIF open date (if provided)'
     rule_template: check_legal_id_range_datetime
-    column_condition: "KDI7:{% if var('shb_cif_open_date_col') is not none %}{{ var('shb_cif_open_date_col') }}{% else %}NULL{% endif %}"
+    column_condition: "KDI7:{{ var('shb_cif_open_date_col') }}"
+{% endif %}
   - code: V8
     description: 'QUOC_TICH must not be in special-control list per Danhmuc_QuocGia where KIEM_SOAT = 1'
     rule_template: check_invalid_category
