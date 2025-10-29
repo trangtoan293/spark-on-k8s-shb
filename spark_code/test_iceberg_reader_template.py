@@ -16,7 +16,8 @@ def _ensure_rapidfuzz():
     try:
         import rapidfuzz
     except Exception:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "rapidfuzz"])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "rapidfuzz", "pytest"])
+
 
 _ensure_rapidfuzz()
 
