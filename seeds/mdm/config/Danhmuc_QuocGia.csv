@@ -1,6 +1,16 @@
-MA_QG,TEN_VT,TEN_QG,QUOC_GIA,KIEM_SOAT
-SYR,SY,Syria,Syria,0
-IRN,IR,Iran,Iran,0
-AFG,AF,Afghanistan,Afghanistan,1
-VNM,VN,Vietnam,VN,0
-PRK,KP,North Korea,North Korea,0
+ORIGINAL_VALUE,STANDARD_VALUE,CATEGORY_TYPE,SOURCE_SYSTEM
+SYR,Syria,quoc_tich,SHB
+SY,Syria,quoc_tich,SHB
+Syria,Syria,quoc_tich,SHB
+IRN,Iran,quoc_tich,SHB
+IR,Iran,quoc_tich,SHB
+Iran,Iran,quoc_tich,SHB
+AFG,Afghanistan,quoc_tich,SHB
+AF,Afghanistan,quoc_tich,SHB
+Afghanistan,Afghanistan,quoc_tich,SHB
+VNM,Vietnam,quoc_tich,SHB
+VN,Vietnam,quoc_tich,SHB
+Vietnam,Vietnam,quoc_tich,SHB
+PRK,North Korea,quoc_tich,SHB
+KP,North Korea,quoc_tich,SHB
+"North Korea",North Korea,quoc_tich,SHB
