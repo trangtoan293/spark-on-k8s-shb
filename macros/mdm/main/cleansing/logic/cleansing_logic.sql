@@ -3,7 +3,12 @@
 
 {# logic convert string to datetime format #}
 {%- macro cleansing_logic_convert_str_to_date(obj, character) -%}
-    TO_DATE({{obj}}, '{{character}}') AS {{obj}}
+    {%- if character is none or character == '' -%}
+        {{obj}} AS {{obj}}
+    {%- else -%}
+        {%- set _pat = character | replace('YYYY','yyyy') | replace('DD','dd') -%}
+        TO_DATE({{obj}}, '{{ _pat }}') AS {{obj}}
+    {%- endif -%}
 {%- endmacro -%}
 
 {# logic replace character ---> blank using regex pattern #}
