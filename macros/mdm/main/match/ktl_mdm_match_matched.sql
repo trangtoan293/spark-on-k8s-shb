@@ -14,7 +14,14 @@
     {%- do matched_auto_match_select_element.append("AUTO_TBL."~cob_col) -%}
     {%- do matched_auto_match_select_element.append("AUTO_TBL.L_"~cob_col) -%}
     {%- do matched_auto_match_select_element.append("AUTO_TBL."~pk_key) -%}
-    {%- set matched_auto_match_select_element = matched_auto_match_select_element + ktl_mdm_utils_metadata_get_master_with_cdt_errcnt_lst(metadata_conf, alias ="AUTO_TBL.", with_total_err_cnt=true) -%}
+    {%- set _auto_cols = [] -%}
+    {%- for col in ktl_mdm_utils_metadata_get_master_with_cdt_errcnt_lst(metadata_conf, alias ="AUTO_TBL.", with_total_err_cnt=true) -%}
+        {%- set col_up = col|upper -%}
+        {%- if (col_up != 'AUTO_TBL.' ~ pk_key) and (col_up != 'AUTO_TBL.' ~ pk_key ~ '_CDT') and (col_up != 'AUTO_TBL.' ~ pk_key ~ '_ERR_CNT') -%}
+            {%- do _auto_cols.append(col) -%}
+        {%- endif -%}
+    {%- endfor -%}
+    {%- set matched_auto_match_select_element = matched_auto_match_select_element + _auto_cols -%}
     {%- do matched_auto_match_select_element.append("AUTO_TBL.HAS_MANUAL_MATCH") -%}
     {%- do matched_auto_match_select_element.append("AUTO_TBL.MANUAL_DUPLICATE_GROUP") -%}
     {%- do matched_auto_match_select_element.append("AUTO_TBL.HAS_AUTO_MATCH") -%}
