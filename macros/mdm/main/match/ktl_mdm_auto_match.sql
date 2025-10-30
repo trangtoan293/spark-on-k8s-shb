@@ -17,7 +17,13 @@
             {%- do auto_match_select_element.append("T."~col) -%}
         {%- endif -%}
     {%- endfor -%}
-    {%- do auto_match_select_element.append(ktl_mdm_utils_metadata_get_errcnt_column_lst(metadata_conf,alias="T.",with_total_err_cnt=false)|join("+")~ " AS TOTAL_ERR_CNT") -%}
+    {%- set _err_cols = [] -%}
+    {%- for col in ktl_mdm_utils_metadata_get_master_column_lst(metadata_conf) -%}
+        {%- if col|upper != pk_key -%}
+            {%- do _err_cols.append("T."~col~"_ERR_CNT") -%}
+        {%- endif -%}
+    {%- endfor -%}
+    {%- do auto_match_select_element.append(_err_cols|join("+")~ " AS TOTAL_ERR_CNT") -%}
     {%- do auto_match_select_element.append("CASE WHEN R.MANUAL_DUPLICATE_GROUP IS NULL THEN 0 ELSE 1 END HAS_MANUAL_MATCH") -%}
     {%- do auto_match_select_element.append("R.MANUAL_DUPLICATE_GROUP") -%}
     {%- do auto_match_select_element.append("1 AS HAS_AUTO_MATCH") -%}
