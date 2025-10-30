@@ -65,6 +65,21 @@ KTL_MDM:
               match_column_4: D_O_B
               match_column_5: SEX_CD
               match_column_6: CUSTOMER_TYPE
+        matched_by_rules:
+          - name: M1
+            type: manual
+            straight:
+              match_column_1: LOAI_GTTT
+              match_column_2: PASS_NO
+          - name: M2
+            type: manual
+            straight:
+              match_column_1: F_NAME
+              match_column_2: M_NAME
+              match_column_3: L_NAME
+              match_column_4: D_O_B
+              match_column_5: SEX_CD
+              match_column_6: CUSTOMER_TYPE
         merge:
           - name: M3
           - name: M4

@@ -1,0 +1,11 @@
+{%- set project = 'KTLMDM' -%}
+{%- set product = 'INDIVIDUAL' -%}
+{%- set source = 'SHB' -%}
+
+{%- set general_conf = ktl_mdm_utils_get_general_config(project) -%}
+{%- set metadata_conf = ktl_mdm_utils_metadata_get_metadata_config(project_name = project, product_name = product, source = source, default = 'shb') -%}
+{%- set rule_apply = ktl_mdm_utils_get_rule_field_apply_config(project_name = project, product = product, source = source, component='match') -%}
+
+{%- set arrange_tbl = ref('KTLMDM_SHB_INDIVIDUAL_MATCHED_ARRANGE_MASTERLIST') -%}
+
+{{ ktl_mdm_auto_match_tracking(general_conf, metadata_conf, rule_apply, arrange_tbl) }}
