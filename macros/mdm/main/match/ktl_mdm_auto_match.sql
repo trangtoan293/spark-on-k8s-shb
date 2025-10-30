@@ -13,7 +13,8 @@
     {%- do auto_match_select_element.append("R.L_"~cob_col) -%}
     {%- do auto_match_select_element.append("T."~pk_key) -%}
     {%- for col in ktl_mdm_utils_metadata_get_master_with_cdt_errcnt_lst(metadata_conf, with_total_err_cnt=false) -%}
-        {%- if col|upper != pk_key -%}
+        {%- set col_up = col|upper -%}
+        {%- if col_up != pk_key and (col_up != pk_key ~ '_CDT') and (col_up != pk_key ~ '_ERR_CNT') -%}
             {%- do auto_match_select_element.append("T."~col) -%}
         {%- endif -%}
     {%- endfor -%}
