@@ -7,14 +7,27 @@
                 {%- for source_item in product_item.get('source_system') -%}
                     {%- if source_item.get('name')|lower == source|lower -%}
                         {%- set conf = source_item.get(component|lower) -%}
-                        {# If conf already a mapping with matched_by_rules, return as-is #}
-                        {%- if conf is mapping and conf.get('matched_by_rules') is not none -%}
-                            {{ return(conf) }}
+                        {# If conf already a mapping, ensure required keys for MATCH #}
+                        {%- if conf is mapping -%}
+                            {%- if component|lower == 'match' -%}
+                                {%- set has_mbr = conf.get('matched_by_rules') is not none -%}
+                                {%- set has_priority = conf.get('auto_match_pkkey_priority_by') is not none -%}
+                                {%- if has_mbr and has_priority -%}
+                                    {{ return(conf) }}
+                                {%- else -%}
+                                    {{ return({
+                                        'matched_by_rules': conf.get('matched_by_rules', []),
+                                        'auto_match_pkkey_priority_by': conf.get('auto_match_pkkey_priority_by', {})
+                                    }) }}
+                                {%- endif -%}
+                            {%- else -%}
+                                {{ return(conf) }}
+                            {%- endif -%}
                         {%- endif -%}
-                        {# If conf is a list: for MATCH wrap, otherwise return list directly (e.g., CLEANSING expects a list) #}
+                        {# If conf is a list: for MATCH wrap (with default priority map), otherwise return list directly (e.g., CLEANSING expects a list) #}
                         {%- if conf is sequence and (conf is not string) -%}
                             {%- if component|lower == 'match' -%}
-                                {{ return({'matched_by_rules': conf}) }}
+                                {{ return({'matched_by_rules': conf, 'auto_match_pkkey_priority_by': {} }) }}
                             {%- else -%}
                                 {{ return(conf) }}
                             {%- endif -%}
