@@ -57,6 +57,7 @@ validate:
     description: 'For CCCD/THE CAN CUOC, PASS_E_DT must equal PASS_I_DT + 15 years'
     rule_template: check_active_datetime_legal_id
     condition: '15:0'
+    column_condition: PASS_I_DT
 {% if var('shb_cif_open_date_col') %}
   - code: V7
     description: 'PASS_I_DT must be after D_O_B and not after CIF open date (if provided)'
