@@ -1,3 +1,8 @@
+{{
+    config(
+        materialized='table'
+    )
+}}
 {%- set project = 'KTLMDM' -%}
 {%- set product = 'INDIVIDUAL' -%}
 {%- set source = 'SHB' -%}

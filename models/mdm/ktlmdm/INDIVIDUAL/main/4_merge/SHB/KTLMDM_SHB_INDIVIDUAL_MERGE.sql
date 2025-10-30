@@ -1,5 +1,6 @@
 {{
     config(
+        materialized='table',
         pre_hook = [
             "DROP VIEW IF EXISTS {{ this }}",
             "DROP TABLE IF EXISTS {{ this }}"
