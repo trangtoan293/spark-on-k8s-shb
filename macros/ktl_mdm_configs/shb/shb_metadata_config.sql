@@ -78,6 +78,7 @@ KTL_MDM:
           - name: _cdc_extracted_at
             is_pk: false
             is_master_key: false
+            is_cob_date: true
           - name: _source_system
             is_pk: false
             is_master_key: false
