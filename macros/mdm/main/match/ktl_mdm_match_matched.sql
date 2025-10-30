@@ -37,7 +37,14 @@
     {%- do matched_no_auto_match_select_element.append("D_TBL."~cob_col) -%}
     {%- do matched_no_auto_match_select_element.append("D_TBL.L_"~cob_col) -%}
     {%- do matched_no_auto_match_select_element.append("V_TBL."~pk_key) -%}
-    {%- set matched_no_auto_match_select_element = matched_no_auto_match_select_element + ktl_mdm_utils_metadata_get_master_with_cdt_errcnt_lst(metadata_conf, alias ="V_TBL.", with_total_err_cnt=true) -%}
+    {%- set _v_cols = [] -%}
+    {%- for col in ktl_mdm_utils_metadata_get_master_with_cdt_errcnt_lst(metadata_conf, alias ="V_TBL.", with_total_err_cnt=true) -%}
+        {%- set col_up = col|upper -%}
+        {%- if (col_up != 'V_TBL.' ~ pk_key) and (col_up != 'V_TBL.' ~ pk_key ~ '_CDT') and (col_up != 'V_TBL.' ~ pk_key ~ '_ERR_CNT') -%}
+            {%- do _v_cols.append(col) -%}
+        {%- endif -%}
+    {%- endfor -%}
+    {%- set matched_no_auto_match_select_element = matched_no_auto_match_select_element + _v_cols -%}
     {%- do matched_no_auto_match_select_element.append("CASE WHEN D_TBL."~pk_key~" IS NULL THEN 0 ELSE D_TBL.HAS_MANUAL_MATCH END HAS_MANUAL_MATCH") -%}
     {%- do matched_no_auto_match_select_element.append("D_TBL.MANUAL_DUPLICATE_GROUP") -%}
     {%- do matched_no_auto_match_select_element.append("CASE WHEN D_TBL."~pk_key~" IS NULL THEN 0 ELSE D_TBL.HAS_AUTO_MATCH END HAS_AUTO_MATCH") -%}
