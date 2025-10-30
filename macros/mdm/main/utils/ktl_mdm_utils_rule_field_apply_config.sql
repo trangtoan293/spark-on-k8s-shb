@@ -11,9 +11,13 @@
                         {%- if conf is mapping and conf.get('matched_by_rules') is not none -%}
                             {{ return(conf) }}
                         {%- endif -%}
-                        {# If conf is a list of rules, wrap into expected structure #}
+                        {# If conf is a list: for MATCH wrap, otherwise return list directly (e.g., CLEANSING expects a list) #}
                         {%- if conf is sequence and (conf is not string) -%}
-                            {{ return({'matched_by_rules': conf}) }}
+                            {%- if component|lower == 'match' -%}
+                                {{ return({'matched_by_rules': conf}) }}
+                            {%- else -%}
+                                {{ return(conf) }}
+                            {%- endif -%}
                         {%- endif -%}
                         {{ return(conf) }}
                     {%- endif -%}
