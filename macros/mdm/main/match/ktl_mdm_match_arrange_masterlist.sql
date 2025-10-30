@@ -9,7 +9,9 @@
     {## CTE_VALIDATE_TBL_OF_AUTO_MATCH #}
     {%- set match_select_cte_vtbl_element = ["V_TBL."~pk_key] -%}
     {%- for col in ktl_mdm_utils_metadata_get_master_with_cdt_errcnt_lst(metadata_conf) -%}
-        {%- do match_select_cte_vtbl_element.append("V_TBL."~col) -%}
+        {%- if col|upper != pk_key -%}
+            {%- do match_select_cte_vtbl_element.append("V_TBL."~col) -%}
+        {%- endif -%}
     {%- endfor %}
 
 
@@ -57,7 +59,9 @@
     {%- do match_arrange_masterlist_select_element.append("K_TBL.AUTO_DUPLICATE_GROUP") -%}
 
     {%- for col in ktl_mdm_utils_metadata_get_master_with_cdt_errcnt_lst(metadata_conf) -%}
-        {%- do match_arrange_masterlist_select_element.append("V_TBL."~col) -%}
+        {%- if col|upper != pk_key -%}
+            {%- do match_arrange_masterlist_select_element.append("V_TBL."~col) -%}
+        {%- endif -%}
     {%- endfor -%}
 
     {%- for col in ktl_mdm_utils_metadata_get_master_column_lst(metadata_conf) -%}
