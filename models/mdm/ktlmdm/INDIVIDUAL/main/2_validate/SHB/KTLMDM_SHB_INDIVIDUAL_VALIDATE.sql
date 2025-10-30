@@ -1,10 +1,3 @@
-{{
-    config(
-        pre_hook = [
-            "DROP TABLE {{this}} purge",
-        ]
-    )
-}}
 {%- set project = 'KTLMDM' -%}
 {%- set product = 'INDIVIDUAL' -%}
 {%- set source = 'SHB' -%}
