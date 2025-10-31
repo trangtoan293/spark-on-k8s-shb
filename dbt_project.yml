@@ -98,6 +98,13 @@ models:
         "read.parquet.vectorization.enabled": "true"
         "read.parquet.vectorization.batch-size": "10000"
 
+    # Ensure all MDM models (under models/mdm/...) are physical tables (Iceberg)
+    mdm:
+      +materialized: table
+      +file_format: iceberg
+      +pre-hook:
+        - "DROP VIEW IF EXISTS {{ this }}"
+
 seeds:
   ktl_dbt:
     +schema: landing
