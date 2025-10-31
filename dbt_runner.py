@@ -69,7 +69,10 @@ def run_dbt_subprocess(dbt_command, dbt_args):
     try:
         cmd = [dbt_command] + dbt_args
         logger.info(f"🚀 Running command via subprocess: {' '.join(cmd)}")
-        
+
+        env = os.environ.copy()
+
+
         # Run command with real-time output
         process = subprocess.Popen(
             cmd,
@@ -77,7 +80,8 @@ def run_dbt_subprocess(dbt_command, dbt_args):
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
-            universal_newlines=True
+            universal_newlines=True,
+            env=env,
         )
         
         # Print output in real-time
@@ -106,11 +110,35 @@ def main():
     """Main entry point for external dbt runner"""
     
     # Parse arguments
-    parser = argparse.ArgumentParser(description='dbt Runner with subprocess support')
+    parser = argparse.ArgumentParser(description='dbt Runner with subprocess support and optional Spark SQL execution')
     parser.add_argument('--use-subprocess', action='store_true', 
                         help='Use subprocess to run dbt command instead of dbtRunner')
     parser.add_argument('--dbt-command', default='dbt', 
                         help='dbt command to use (default: dbt, can use ktl_dbt)')
+    # Optional: upload artifacts to S3 after successful run
+    parser.add_argument('--upload-artifacts', action='store_true',
+                        help='Upload dbt artifacts (manifest, run_results, catalog, dbt.log) to S3 after a successful run')
+    parser.add_argument('--s3-bucket',
+                        help='Target S3 bucket for artifacts (required when --upload-artifacts)')
+    parser.add_argument('--s3-prefix', default='',
+                        help='Optional S3 key prefix for uploaded artifacts, e.g. "dbt/artifacts/2025-10-10"')
+    parser.add_argument('--artifacts-target-dir', default='target',
+                        help='Relative target dir containing dbt artifacts (default: target)')
+    parser.add_argument('--artifacts-logs-dir', default='logs',
+                        help='Relative logs dir containing dbt.log (default: logs)')
+    # MinIO/S3 options
+    parser.add_argument('--s3-endpoint-url', default=None,
+                        help='Custom S3/MinIO endpoint URL (e.g., http://minio:9000)')
+    parser.add_argument('--s3-region', default=None,
+                        help='AWS region name (default inferred or env AWS_DEFAULT_REGION)')
+    parser.add_argument('--s3-access-key-id', default=None,
+                        help='Explicit S3 access key ID (MinIO/AWS)')
+    parser.add_argument('--s3-secret-access-key', default=None,
+                        help='Explicit S3 secret access key (MinIO/AWS)')
+    parser.add_argument('--s3-session-token', default=None,
+                        help='Optional AWS session token')
+    parser.add_argument('--s3-no-verify-ssl', action='store_true',
+                        help='Disable SSL verification for S3/MinIO (useful for self-signed)')
     
     # Parse known args to separate our flags from dbt args
     args, remaining_args = parser.parse_known_args()
@@ -132,10 +160,34 @@ def main():
     os.environ['DBT_PROFILES_DIR'] = dbt_project_dir
     os.environ['DBT_PROJECT_DIR'] = dbt_project_dir
     
+    # Import uploader only when needed and after switching into the project dir
+    if 'args' in locals() and args.upload_artifacts:
+        try:
+            if dbt_project_dir not in sys.path:
+                sys.path.insert(0, dbt_project_dir)
+            from utils.dbt_artifacts_uploader import upload_dbt_artifacts
+        except ModuleNotFoundError:
+            logger.error("No module named 'utils.dbt_artifacts_uploader'. Ensure the project contains 'utils/' with __init__.py and the uploader module, and that we run from the project root.")
+            sys.exit(1)
+
     # Create writable directories in temp space
     os.makedirs("/tmp/dbt_target", exist_ok=True)
     os.makedirs("/tmp/dbt_logs", exist_ok=True)
     logger.info("Created writable temp directories for dbt target and logs")
+    if not os.environ.get('DBT_TARGET_PATH'):
+        os.environ['DBT_TARGET_PATH'] = "/tmp/dbt_target"
+    if not os.environ.get('DBT_LOG_PATH'):
+        os.environ['DBT_LOG_PATH'] = "/tmp/dbt_logs"
+    logger.info(f"Using DBT_TARGET_PATH={os.environ.get('DBT_TARGET_PATH')}, DBT_LOG_PATH={os.environ.get('DBT_LOG_PATH')}")
+
+    # Compute initial effective artifact directories for uploader (can be overridden by CLI)
+    effective_target_dir = args.artifacts_target_dir
+    effective_logs_dir = args.artifacts_logs_dir
+    if effective_target_dir == 'target' and os.environ.get('DBT_TARGET_PATH'):
+        effective_target_dir = os.environ['DBT_TARGET_PATH']
+    if effective_logs_dir == 'logs' and os.environ.get('DBT_LOG_PATH'):
+        effective_logs_dir = os.environ['DBT_LOG_PATH']
+    logger.info(f"Initial artifact dirs: target_dir={effective_target_dir}, logs_dir={effective_logs_dir}")
     
     # Build list of dbt command segments (support '--' separator)
     raw_args = []
@@ -193,6 +245,44 @@ def main():
     logger.info(f"📋 Execution mode: {'subprocess' if args.use_subprocess else 'dbtRunner'}")
     logger.info(f"📋 Using command: {args.dbt_command}")
 
+    # Detect explicit CLI overrides for paths and align env/effective dirs
+    dbt_args_flat = []
+    for seg in normalised_segments:
+        dbt_args_flat.extend(seg)
+    cli_target_path = None
+    cli_log_path = None
+    i = 0
+    while i < len(dbt_args_flat):
+        tok = dbt_args_flat[i]
+        if tok == '--target-path' and i + 1 < len(dbt_args_flat):
+            cli_target_path = dbt_args_flat[i + 1]
+            i += 2
+            continue
+        if tok.startswith('--target-path='):
+            cli_target_path = tok.split('=', 1)[1]
+            i += 1
+            continue
+        if tok == '--log-path' and i + 1 < len(dbt_args_flat):
+            cli_log_path = dbt_args_flat[i + 1]
+            i += 2
+            continue
+        if tok.startswith('--log-path='):
+            cli_log_path = tok.split('=', 1)[1]
+            i += 1
+            continue
+        i += 1
+
+    if cli_target_path:
+        os.environ['DBT_TARGET_PATH'] = cli_target_path
+        effective_target_dir = cli_target_path
+        logger.info(f"Detected CLI --target-path, using {cli_target_path}")
+    if cli_log_path:
+        os.environ['DBT_LOG_PATH'] = cli_log_path
+        effective_logs_dir = cli_log_path
+        logger.info(f"Detected CLI --log-path, using {cli_log_path}")
+
+    logger.info(f"Artifacts will be collected from target_dir={effective_target_dir}, logs_dir={effective_logs_dir}")
+
     # Do NOT create a SparkSession here.
     # dbt-spark will manage SparkSession/Context internally. Creating one here can
     # lead to "Only one SparkContext should be running in this JVM" (SPARK-2243).
@@ -220,6 +310,34 @@ def main():
                 success = run_dbt_subprocess(args.dbt_command, segment)
                 if not success:
                     sys.exit(1)
+            # After all successful runs, optionally upload artifacts to S3
+            if args.upload_artifacts:
+                if not args.s3_bucket:
+                    logger.error("--s3-bucket is required when --upload-artifacts is set")
+                    sys.exit(1)
+                access_key = args.s3_access_key_id or os.environ.get('AWS_ACCESS_KEY_ID')
+                secret_key = args.s3_secret_access_key or os.environ.get('AWS_SECRET_ACCESS_KEY')
+                session_token = args.s3_session_token or os.environ.get('AWS_SESSION_TOKEN')
+                endpoint_url = args.s3_endpoint_url or os.environ.get('AWS_ENDPOINT_URL')
+                region = args.s3_region or os.environ.get('AWS_DEFAULT_REGION')
+
+                uploaded = upload_dbt_artifacts(
+                    bucket=args.s3_bucket,
+                    prefix=args.s3_prefix or '',
+                    project_dir=dbt_project_dir,
+                    target_dir=effective_target_dir,
+                    logs_dir=effective_logs_dir,
+                    endpoint_url=endpoint_url,
+                    region_name=region,
+                    access_key=access_key,
+                    secret_key=secret_key,
+                    session_token=session_token,
+                    verify_ssl=(not args.s3_no_verify_ssl),
+                )
+                if uploaded:
+                    logger.info("✅ Uploaded dbt artifacts to S3")
+                else:
+                    logger.error("❌ Failed to upload dbt artifacts to S3")
         else:
             # dbtRunner mode only supports a single command
             segment = normalised_segments[0]
@@ -233,6 +351,34 @@ def main():
                 logger.info(f"{r.node.name}: {r.status}")
             if res.success:
                 logger.info("✅ dbt command completed successfully")
+                # After a successful run, optionally upload artifacts to S3
+                if args.upload_artifacts:
+                    if not args.s3_bucket:
+                        logger.error("--s3-bucket is required when --upload-artifacts is set")
+                        sys.exit(1)
+                    access_key = args.s3_access_key_id or os.environ.get('AWS_ACCESS_KEY_ID')
+                    secret_key = args.s3_secret_access_key or os.environ.get('AWS_SECRET_ACCESS_KEY')
+                    session_token = args.s3_session_token or os.environ.get('AWS_SESSION_TOKEN')
+                    endpoint_url = args.s3_endpoint_url or os.environ.get('AWS_ENDPOINT_URL')
+                    region = args.s3_region or os.environ.get('AWS_DEFAULT_REGION')
+
+                    uploaded = upload_dbt_artifacts(
+                        bucket=args.s3_bucket,
+                        prefix=args.s3_prefix or '',
+                        project_dir=dbt_project_dir,
+                        target_dir=effective_target_dir,
+                        logs_dir=effective_logs_dir,
+                        endpoint_url=endpoint_url,
+                        region_name=region,
+                        access_key=access_key,
+                        secret_key=secret_key,
+                        session_token=session_token,
+                        verify_ssl=(not args.s3_no_verify_ssl),
+                    )
+                    if uploaded:
+                        logger.info("✅ Uploaded dbt artifacts to S3")
+                    else:
+                        logger.error("❌ Failed to upload dbt artifacts to S3")
             else:
                 logger.error("❌ dbt command failed")
                 if res.exception:
