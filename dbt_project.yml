@@ -102,8 +102,6 @@ models:
     mdm:
       +materialized: table
       +file_format: iceberg
-      +pre-hook:
-        - "DROP VIEW IF EXISTS {{ this }}"
 
 seeds:
   ktl_dbt:
