@@ -1,12 +1,3 @@
-{{
-    config(
-        materialized='table',
-        pre_hook = [
-            "DROP VIEW IF EXISTS {{ this }}",
-            "DROP TABLE IF EXISTS {{ this }}"
-        ]
-    )
-}}
 {%- set project = 'KTLMDM' -%}
 {%- set product = 'INDIVIDUAL' -%}
 {%- set source = 'SHB' -%}
